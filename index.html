@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <title>シンプル将棋</title>
-  <link rel="icon" href="O.png">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link rel="icon" type="image/png" href="O.png">
+
 <style>
   :root {
     --board-size: min(90vw, 90vh);
@@ -153,9 +155,6 @@
 </div>
 
 <script>
-/* ============================
-   基本データ
-============================ */
 const SENTE = 1;
 const GOTE = -1;
 
@@ -199,9 +198,6 @@ let selectedFromHand = null;
 let highlightOn = true;
 let aiThinking = false;
 
-/* ============================
-   初期配置（角と飛車 正しい位置）
-============================ */
 function initBoard(){
   board = Array.from({length:9},()=>Array(9).fill(null));
 
@@ -209,14 +205,12 @@ function initBoard(){
     board[r][c]={owner,type,promoted};
   }
 
-  // 後手
   place(0,0,GOTE,"KY"); place(0,1,GOTE,"KE"); place(0,2,GOTE,"GI");
   place(0,3,GOTE,"KI"); place(0,4,GOTE,"OU2"); place(0,5,GOTE,"KI");
   place(0,6,GOTE,"GI"); place(0,7,GOTE,"KE"); place(0,8,GOTE,"KY");
   place(1,1,GOTE,"HI"); place(1,7,GOTE,"KA");
   for(let c=0;c<9;c++) place(2,c,GOTE,"FU");
 
-  // 先手
   place(8,0,SENTE,"KY"); place(8,1,SENTE,"KE"); place(8,2,SENTE,"GI");
   place(8,3,SENTE,"KI"); place(8,4,SENTE,"OU"); place(8,5,SENTE,"KI");
   place(8,6,SENTE,"GI"); place(8,7,SENTE,"KE"); place(8,8,SENTE,"KY");
@@ -230,9 +224,6 @@ function initBoard(){
   selectedFromHand=null;
 }
 
-/* ============================
-   UI生成
-============================ */
 const boardEl=document.getElementById("board");
 const senteHandEl=document.getElementById("sente-hand");
 const goteHandEl=document.getElementById("gote-hand");
@@ -349,9 +340,6 @@ function displayName(piece){
   return PIECES[piece.type].name;
 }
 
-/* ============================
-   入力処理
-============================ */
 function onPieceClick(r,c){
   const piece=board[r][c];
   if(!piece || piece.owner!==currentTurn) return;
@@ -394,9 +382,6 @@ function onCellClick(r,c){
   }
 }
 
-/* ============================
-   指し手生成（方向反転なし）
-============================ */
 function inBounds(r,c){return r>=0 && r<9 && c>=0 && c<9;}
 
 function generateMovesFor(r,c,piece){
@@ -498,12 +483,10 @@ function generateMovesFor(r,c,piece){
       result.push(m);
     }
   });
+
   return result;
 }
 
-/* ============================
-   成り駒の種類
-============================ */
 function promotedKey(type){
   if(type==="FU") return "TO";
   if(type==="KY") return "NY";
@@ -514,9 +497,6 @@ function promotedKey(type){
   return type;
 }
 
-/* ============================
-   指し手オブジェクト生成
-============================ */
 function makeMove(fromR,fromC,toR,toC,piece,capture){
   return {
     fromR,fromC,toR,toC,
@@ -529,9 +509,6 @@ function makeMove(fromR,fromC,toR,toC,piece,capture){
   };
 }
 
-/* ============================
-   持ち駒の打ち手生成
-============================ */
 function generateDropMoves(owner,fromHand){
   const moves=[];
   const type=fromHand.type;
@@ -555,9 +532,6 @@ function generateDropMoves(owner,fromHand){
   return moves;
 }
 
-/* ============================
-   手の適用
-============================ */
 function applyMove(move){
   if(move.drop){
     board[move.toR][move.toC]={
@@ -591,9 +565,6 @@ function applyMove(move){
   checkGameEnd();
 }
 
-/* ============================
-   成り駒 → 元の種類
-============================ */
 function unpromoteType(type){
   if(type==="FU") return "FU";
   if(type==="KY") return "KY";
@@ -604,46 +575,36 @@ function unpromoteType(type){
   return type;
 }
 
-/* ============================
-   勝敗判定（玉と王を区別）
-============================ */
-function checkGameEnd() {
-  let senteKing = false;
-  let goteKing = false;
+function checkGameEnd(){
+  let senteKing=false;
+  let goteKing=false;
 
-  // --- 盤上チェック ---
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      const p = board[r][c];
-      if (!p) continue;
+  for(let r=0;r<9;r++){
+    for(let c=0;c<9;c++){
+      const p=board[r][c];
+      if(!p) continue;
 
-      if (p.type === "OU" && p.owner === SENTE) senteKing = true;
-      if ((p.type === "OU" || p.type === "OU2") && p.owner === GOTE) goteKing = true;
+      if(p.type==="OU" && p.owner===SENTE) senteKing=true;
+      if((p.type==="OU"||p.type==="OU2") && p.owner===GOTE) goteKing=true;
     }
   }
 
-  // --- 持ち駒チェック（玉/王が持ち駒に入っていたらアウト） ---
-  if (hands[SENTE]["OU"] > 0) senteKing = false;
-  if (hands[GOTE]["OU"] > 0 || hands[GOTE]["OU2"] > 0) goteKing = false;
+  if(hands[SENTE]["OU2"]>0) goteKing=false;
+  if(hands[GOTE]["OU"]>0) senteKing=false;
 
-  // --- 判定 ---
-  if (!senteKing) {
-    statusEl.textContent = "後手（AI）の勝ち";
-    aiThinking = false;
+  if(!senteKing){
+    statusEl.textContent="後手（AI）の勝ち";
+    aiThinking=false;
     return true;
   }
-  if (!goteKing) {
-    statusEl.textContent = "先手（あなた）の勝ち";
-    aiThinking = false;
+  if(!goteKing){
+    statusEl.textContent="先手（あなた）の勝ち";
+    aiThinking=false;
     return true;
   }
   return false;
 }
 
-
-/* ============================
-   AI
-============================ */
 function aiTurn(){
   if(currentTurn!==GOTE) return;
   aiThinking=true;
@@ -763,9 +724,6 @@ function restoreState(snap){
   currentTurn=snap.currentTurn;
 }
 
-/* ============================
-   手の名前表示
-============================ */
 function moveToName(m,who){
   const files=["９","８","７","６","５","４","３","２","１"];
   const ranks=["一","二","三","四","五","六","七","八","九"];
@@ -782,9 +740,6 @@ function moveToName(m,who){
   }
 }
 
-/* ============================
-   上部メッセージ
-============================ */
 let topMsgTimer=null;
 function showTopMessage(text){
   topBarEl.textContent=text;
@@ -793,9 +748,6 @@ function showTopMessage(text){
   topMsgTimer=setTimeout(()=>{topBarEl.style.opacity="0";},2500);
 }
 
-/* ============================
-   イベント
-============================ */
 document.getElementById("toggleHighlight").addEventListener("change",e=>{
   highlightOn=e.target.checked;
   render();
@@ -805,9 +757,6 @@ document.getElementById("resetBtn").addEventListener("click",()=>{
   render();
 });
 
-/* ============================
-   初期化
-============================ */
 initBoard();
 buildBoardUI();
 render();
