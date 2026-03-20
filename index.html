@@ -295,9 +295,16 @@ function render() {
         if(piece.promoted) div.classList.add("promoted");
         div.textContent = displayName(piece);
         div.addEventListener("click",(e)=>{
-          e.stopPropagation();
-          onPieceClick(r,c);
-        });
+  e.stopPropagation();
+  if (piece.owner === currentTurn) {
+    // 自分の駒を選択
+    onPieceClick(r, c);
+  } else {
+    // 相手の駒のマスに「動く／取る」
+    onCellClick(r, c);
+  }
+});
+
         if(selected && selected.r===r && selected.c===c) {
           div.classList.add("selected");
         }
