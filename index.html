@@ -10,10 +10,9 @@
     --cell-size: calc(var(--board-size) / 9);
     --piece-font: clamp(14px, 3vw, 24px);
   }
-  * { box-sizing: border-box; }
   body {
     margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: system-ui;
     background:#f4f4f4;
     display:flex;
     flex-direction:column;
@@ -22,18 +21,14 @@
   }
   #top-bar {
     position:fixed;
-    top:0;
-    left:0;
-    right:0;
+    top:0; left:0; right:0;
     padding:6px 10px;
     background:rgba(0,0,0,0.8);
     color:#fff;
-    font-size:14px;
     text-align:center;
-    z-index:10;
-    pointer-events:none;
     opacity:0;
     transition:opacity .3s;
+    z-index:20;
   }
   #container {
     margin-top:40px;
@@ -49,14 +44,6 @@
     flex-wrap:wrap;
     gap:8px;
     justify-content:center;
-    font-size:14px;
-  }
-  #controls label { display:flex; align-items:center; gap:4px; }
-  #board-wrapper {
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:6px;
   }
   #board {
     width:var(--board-size);
@@ -66,14 +53,13 @@
     grid-template-columns:repeat(9,1fr);
     grid-template-rows:repeat(9,1fr);
     background:#f0d9b5;
-    touch-action:manipulation;
   }
   .cell {
     border:1px solid #c9a66b;
     position:relative;
   }
   .cell.highlight {
-    background:burlywood;
+    background:burlywood !important;
   }
   .piece {
     position:absolute;
@@ -83,29 +69,22 @@
     justify-content:center;
     font-size:var(--piece-font);
     border-radius:4px;
-    user-select:none;
     cursor:pointer;
-    transition:transform .1s, box-shadow .1s;
+    z-index:10;
   }
   .piece.sente {
     background:#fff7d6;
     border:1px solid #b08a3c;
-    color:#333;
   }
   .piece.gote {
     background:#fdf1f1;
     border:1px solid #b35b5b;
-    color:#333;
     transform:rotate(180deg);
-  }
-  .piece.selected {
-    box-shadow:0 0 0 2px #007aff;
   }
   .piece.promoted::after {
     content:"成";
     position:absolute;
-    top:2px;
-    right:3px;
+    top:2px; right:3px;
     font-size:0.6em;
     color:#c00;
   }
@@ -125,12 +104,6 @@
     flex-wrap:wrap;
     gap:4px;
     padding:4px;
-    font-size:12px;
-  }
-  .hand-title {
-    width:100%;
-    font-size:12px;
-    color:#555;
   }
   .hand-piece {
     padding:2px 4px;
@@ -145,209 +118,208 @@
   .hand-piece.selected {
     box-shadow:0 0 0 2px #007aff;
   }
-  #status {
-    font-size:14px;
-    text-align:center;
-  }
-  button, select, input[type="checkbox"] {
-    font-size:14px;
-  }
 </style>
 </head>
 <body>
+
 <div id="top-bar"></div>
+
 <div id="container">
   <div id="controls">
     <label>難易度:
       <select id="difficulty">
-        <option value="1">1（やさしい）</option>
+        <option value="1">1</option>
         <option value="2">2</option>
         <option value="3" selected>3</option>
         <option value="4">4</option>
-        <option value="5">5（つよい）</option>
+        <option value="5">5</option>
       </select>
     </label>
     <label>
       <input type="checkbox" id="toggleHighlight" checked>
-      駒のいける方向オン/オフ
+      駒のいける方向
     </label>
     <button id="resetBtn">リセット</button>
   </div>
 
-  <div id="board-wrapper">
-    <div id="hands">
-      <div id="gote-hand" class="hand">
-        <div class="hand-title">後手の持ち駒</div>
-      </div>
-      <div id="sente-hand" class="hand">
-        <div class="hand-title">先手の持ち駒</div>
-      </div>
-    </div>
-    <div id="board"></div>
+  <div id="hands">
+    <div id="gote-hand" class="hand"><div class="hand-title">後手の持ち駒</div></div>
+    <div id="sente-hand" class="hand"><div class="hand-title">先手の持ち駒</div></div>
   </div>
 
+  <div id="board"></div>
   <div id="status"></div>
 </div>
 
 <script>
-/* --- 基本データ --- */
+/* ============================
+   基本データ
+============================ */
 const SENTE = 1;
 const GOTE = -1;
 
 const PIECES = {
-  FU:  { name:"歩", value:1 },
-  KY:  { name:"香", value:3 },
-  KE:  { name:"桂", value:3 },
-  GI:  { name:"銀", value:4 },
-  KI:  { name:"金", value:5 },
-  KA:  { name:"角", value:8 },
-  HI:  { name:"飛", value:9 },
-  OU:  { name:"玉", value:1000 }
+  FU:{name:"歩",value:1},
+  KY:{name:"香",value:3},
+  KE:{name:"桂",value:3},
+  GI:{name:"銀",value:4},
+  KI:{name:"金",value:5},
+  KA:{name:"角",value:8},
+  HI:{name:"飛",value:9},
+  OU:{name:"玉",value:1000},
+  OU2:{name:"王",value:1000}
 };
 
 const PROMOTABLE = ["FU","KY","KE","GI","KA","HI"];
 
 const DIRS = {
-  FU:  [[-1,0]],
-  KY:  "slideForward",
-  KE:  [[-2,-1],[-2,1]],
-  GI:  [[-1,-1],[-1,0],[-1,1],[1,-1],[1,1]],
-  KI:  [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,0]],
-  OU:  [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]],
-  KA:  "slideDiag",
-  HI:  "slideOrth",
-  TO:  "goldLike",
-  NY:  "goldLike",
-  NK:  "goldLike",
-  NG:  "goldLike",
-  UM:  "diagPlusKing",
-  RY:  "orthPlusKing"
+  FU:[[-1,0]],
+  KY:"slideForward",
+  KE:[[-2,-1],[-2,1]],
+  GI:[[-1,-1],[-1,0],[-1,1],[1,-1],[1,1]],
+  KI:[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,0]],
+  OU:[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]],
+  OU2:[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]],
+  KA:"slideDiag",
+  HI:"slideOrth",
+  TO:"goldLike",
+  NY:"goldLike",
+  NK:"goldLike",
+  NG:"goldLike",
+  UM:"diagPlusKing",
+  RY:"orthPlusKing"
 };
 
 let board = [];
-let hands = { [SENTE]:{}, [GOTE]:{} };
+let hands = {[SENTE]:{},[GOTE]:{}};
 let currentTurn = SENTE;
 let selected = null;
 let selectedFromHand = null;
 let highlightOn = true;
 let aiThinking = false;
 
-/* --- 初期配置 --- */
-function initBoard() {
-  board = Array.from({length:9}, ()=>Array(9).fill(null));
+/* ============================
+   初期配置（角と飛車 正しい位置）
+============================ */
+function initBoard(){
+  board = Array.from({length:9},()=>Array(9).fill(null));
+
   function place(r,c,owner,type,promoted=false){
-    board[r][c] = { owner, type, promoted };
+    board[r][c]={owner,type,promoted};
   }
+
   // 後手
   place(0,0,GOTE,"KY"); place(0,1,GOTE,"KE"); place(0,2,GOTE,"GI");
-  place(0,3,GOTE,"KI"); place(0,4,GOTE,"OU"); place(0,5,GOTE,"KI");
+  place(0,3,GOTE,"KI"); place(0,4,GOTE,"OU2"); place(0,5,GOTE,"KI");
   place(0,6,GOTE,"GI"); place(0,7,GOTE,"KE"); place(0,8,GOTE,"KY");
-  place(1,7,GOTE,"KA"); place(1,1,GOTE,"HI");
+  place(1,1,GOTE,"HI"); place(1,7,GOTE,"KA");
   for(let c=0;c<9;c++) place(2,c,GOTE,"FU");
+
   // 先手
   place(8,0,SENTE,"KY"); place(8,1,SENTE,"KE"); place(8,2,SENTE,"GI");
   place(8,3,SENTE,"KI"); place(8,4,SENTE,"OU"); place(8,5,SENTE,"KI");
   place(8,6,SENTE,"GI"); place(8,7,SENTE,"KE"); place(8,8,SENTE,"KY");
-  place(7,7,SENTE,"HI"); place(7,1,SENTE,"KA");
+  place(7,1,SENTE,"KA"); place(7,7,SENTE,"HI");
   for(let c=0;c<9;c++) place(6,c,SENTE,"FU");
 
-  hands[SENTE] = {};
-  hands[GOTE] = {};
-  currentTurn = SENTE;
-  selected = null;
-  selectedFromHand = null;
+  hands[SENTE]={};
+  hands[GOTE]={};
+  currentTurn=SENTE;
+  selected=null;
+  selectedFromHand=null;
 }
 
-/* --- UI生成 --- */
-const boardEl = document.getElementById("board");
-const senteHandEl = document.getElementById("sente-hand");
-const goteHandEl = document.getElementById("gote-hand");
-const statusEl = document.getElementById("status");
-const topBarEl = document.getElementById("top-bar");
+/* ============================
+   UI生成
+============================ */
+const boardEl=document.getElementById("board");
+const senteHandEl=document.getElementById("sente-hand");
+const goteHandEl=document.getElementById("gote-hand");
+const statusEl=document.getElementById("status");
+const topBarEl=document.getElementById("top-bar");
 
-function buildBoardUI() {
-  boardEl.innerHTML = "";
+function buildBoardUI(){
+  boardEl.innerHTML="";
   for(let r=0;r<9;r++){
     for(let c=0;c<9;c++){
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      cell.dataset.r = r;
-      cell.dataset.c = c;
-      cell.addEventListener("click", ()=>onCellClick(r,c));
+      const cell=document.createElement("div");
+      cell.className="cell";
+      cell.dataset.r=r;
+      cell.dataset.c=c;
+      cell.addEventListener("click",()=>onCellClick(r,c));
       boardEl.appendChild(cell);
     }
   }
 }
 
-function render() {
-  // 盤
+function render(){
   document.querySelectorAll(".cell").forEach(cell=>{
-    cell.innerHTML = "";
+    cell.innerHTML="";
     cell.classList.remove("highlight");
   });
+
   for(let r=0;r<9;r++){
     for(let c=0;c<9;c++){
-      const piece = board[r][c];
+      const piece=board[r][c];
       if(piece){
-        const cell = getCell(r,c);
-        const div = document.createElement("div");
-        div.className = "piece " + (piece.owner===SENTE?"sente":"gote");
+        const cell=getCell(r,c);
+        const div=document.createElement("div");
+        div.className="piece "+(piece.owner===SENTE?"sente":"gote");
         if(piece.promoted) div.classList.add("promoted");
-        div.textContent = displayName(piece);
-        div.addEventListener("click",(e)=>{
-  e.stopPropagation();
-  if (piece.owner === currentTurn) {
-    // 自分の駒を選択
-    onPieceClick(r, c);
-  } else {
-    // 相手の駒のマスに「動く／取る」
-    onCellClick(r, c);
-  }
-});
+        div.textContent=displayName(piece);
 
-        if(selected && selected.r===r && selected.c===c) {
+        div.addEventListener("click",(e)=>{
+          e.stopPropagation();
+          if(piece.owner===currentTurn){
+            onPieceClick(r,c);
+          } else {
+            onCellClick(r,c);
+          }
+        });
+
+        if(selected && selected.r===r && selected.c===c){
           div.classList.add("selected");
         }
         cell.appendChild(div);
       }
     }
   }
-  // ハイライト
+
   if(highlightOn && (selected || selectedFromHand)){
     const moves = selected
-      ? generateMovesFor(selected.r, selected.c, board[selected.r][selected.c])
-      : generateDropMoves(currentTurn, selectedFromHand);
+      ? generateMovesFor(selected.r,selected.c,board[selected.r][selected.c])
+      : generateDropMoves(currentTurn,selectedFromHand);
+
     moves.forEach(m=>{
-      const cell = getCell(m.toR, m.toC);
-      cell.classList.add("highlight");
+      getCell(m.toR,m.toC).classList.add("highlight");
     });
   }
 
-  // 持ち駒
   renderHands();
-  statusEl.textContent = currentTurn===SENTE ? "あなた（先手）の手番" : "AI（後手）の手番";
+  statusEl.textContent=currentTurn===SENTE?"あなたの手番":"AIの手番";
 }
 
-function renderHands() {
-  function renderHand(el, owner) {
-    el.innerHTML = '<div class="hand-title">'+(owner===SENTE?"先手の持ち駒":"後手の持ち駒")+'</div>';
-    const h = hands[owner];
+function renderHands(){
+  function renderHand(el,owner){
+    el.innerHTML='<div class="hand-title">'+(owner===SENTE?"先手":"後手")+'の持ち駒</div>';
+    const h=hands[owner];
     Object.keys(h).forEach(type=>{
-      const count = h[type];
-      if(count>0){
-        const div = document.createElement("div");
-        div.className = "hand-piece " + (owner===SENTE?"sente":"gote");
+      if(h[type]>0){
+        const div=document.createElement("div");
+        div.className="hand-piece "+(owner===SENTE?"sente":"gote");
+        div.textContent=PIECES[type].name+"×"+h[type];
+
         if(selectedFromHand && selectedFromHand.owner===owner && selectedFromHand.type===type){
           div.classList.add("selected");
         }
-        div.textContent = PIECES[type].name + "×" + count;
+
         if(owner===currentTurn && owner===SENTE){
           div.addEventListener("click",()=>{
             if(selectedFromHand && selectedFromHand.type===type){
-              selectedFromHand = null;
+              selectedFromHand=null;
             } else {
-              selected = null;
-              selectedFromHand = { owner, type };
+              selected=null;
+              selectedFromHand={owner,type};
             }
             render();
           });
@@ -356,8 +328,8 @@ function renderHands() {
       }
     });
   }
-  renderHand(senteHandEl, SENTE);
-  renderHand(goteHandEl, GOTE);
+  renderHand(senteHandEl,SENTE);
+  renderHand(goteHandEl,GOTE);
 }
 
 function getCell(r,c){
@@ -376,181 +348,161 @@ function displayName(piece){
   return PIECES[piece.type].name;
 }
 
-/* --- 入力処理 --- */
+/* ============================
+   入力処理
+============================ */
 function onPieceClick(r,c){
-  const piece = board[r][c];
-  if(!piece) return;
-  if(piece.owner!==currentTurn) return;
-  selectedFromHand = null;
-  if(selected && selected.r===r && selected.c===c){
-    selected = null;
-  } else {
-    selected = { r,c };
-  }
+  const piece=board[r][c];
+  if(!piece || piece.owner!==currentTurn) return;
+
+  selectedFromHand=null;
+  selected = (selected && selected.r===r && selected.c===c) ? null : {r,c};
   render();
 }
 
 function onCellClick(r,c){
-  if(aiThinking) return;
-  if(currentTurn!==SENTE) return;
+  if(aiThinking || currentTurn!==SENTE) return;
 
   if(selected){
-    const piece = board[selected.r][selected.c];
-    const moves = generateMovesFor(selected.r, selected.c, piece);
-    const move = moves.find(m=>m.toR===r && m.toC===c);
+    const piece=board[selected.r][selected.c];
+    const moves=generateMovesFor(selected.r,selected.c,piece);
+    const move=moves.find(m=>m.toR===r && m.toC===c);
+
     if(move){
       applyMove(move);
-      selected = null;
+      selected=null;
       render();
-      setTimeout(aiTurn, 200);
+      setTimeout(aiTurn,200);
     } else {
-      selected = null;
+      selected=null;
       render();
     }
   } else if(selectedFromHand){
-    const moves = generateDropMoves(currentTurn, selectedFromHand);
-    const move = moves.find(m=>m.toR===r && m.toC===c);
+    const moves=generateDropMoves(currentTurn,selectedFromHand);
+    const move=moves.find(m=>m.toR===r && m.toC===c);
+
     if(move){
       applyMove(move);
-      selectedFromHand = null;
+      selectedFromHand=null;
       render();
-      setTimeout(aiTurn, 200);
+      setTimeout(aiTurn,200);
     } else {
-      selectedFromHand = null;
+      selectedFromHand=null;
       render();
     }
   }
 }
 
-/* --- 指し手生成 --- */
-function inBounds(r,c){ return r>=0 && r<9 && c>=0 && c<9; }
+/* ============================
+   指し手生成（方向反転なし）
+============================ */
+function inBounds(r,c){return r>=0 && r<9 && c>=0 && c<9;}
 
 function generateMovesFor(r,c,piece){
-  const moves = [];
-  const dir = piece.owner===SENTE ? -1 : 1;
+  const moves=[];
   const typeKey = piece.promoted ? promotedKey(piece.type) : piece.type;
   const pattern = DIRS[typeKey];
 
   function addStep(dr,dc){
-    const nr = r + dr*(piece.owner===SENTE?1:-1);
-    const nc = c + dc;
+    const nr=r+dr;
+    const nc=c+dc;
     if(!inBounds(nr,nc)) return;
-    const target = board[nr][nc];
+    const target=board[nr][nc];
     if(target && target.owner===piece.owner) return;
     moves.push(makeMove(r,c,nr,nc,piece,target));
   }
 
   if(pattern==="slideForward"){
-    let nr = r + dir;
-    let nc = c;
+    let nr=r-1, nc=c;
     while(inBounds(nr,nc)){
-      const target = board[nr][nc];
+      const target=board[nr][nc];
       if(target && target.owner===piece.owner) break;
       moves.push(makeMove(r,c,nr,nc,piece,target));
       if(target) break;
-      nr += dir;
+      nr--;
     }
-  } else if(pattern==="slideDiag"){
-    const dirs = [[-1,-1],[-1,1],[1,-1],[1,1]];
+  }
+  else if(pattern==="slideDiag"){
+    const dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];
     dirs.forEach(([dr,dc])=>{
-      let nr = r+dr, nc=c+dc;
+      let nr=r+dr, nc=c+dc;
       while(inBounds(nr,nc)){
-        const target = board[nr][nc];
+        const target=board[nr][nc];
         if(target && target.owner===piece.owner) break;
         moves.push(makeMove(r,c,nr,nc,piece,target));
         if(target) break;
         nr+=dr; nc+=dc;
       }
     });
-  } else if(pattern==="slideOrth"){
-    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+  }
+  else if(pattern==="slideOrth"){
+    const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
     dirs.forEach(([dr,dc])=>{
-      let nr = r+dr, nc=c+dc;
+      let nr=r+dr, nc=c+dc;
       while(inBounds(nr,nc)){
-        const target = board[nr][nc];
+        const target=board[nr][nc];
         if(target && target.owner===piece.owner) break;
         moves.push(makeMove(r,c,nr,nc,piece,target));
         if(target) break;
         nr+=dr; nc+=dc;
       }
     });
-  } else if(pattern==="goldLike"){
-    const gold = DIRS.KI;
-    gold.forEach(([dr,dc])=>{
-      const nr = r + dr*(piece.owner===SENTE?1:-1);
-      const nc = c + dc;
-      if(!inBounds(nr,nc)) return;
-      const target = board[nr][nc];
-      if(target && target.owner===piece.owner) return;
-      moves.push(makeMove(r,c,nr,nc,piece,target));
-    });
-  } else if(pattern==="diagPlusKing"){
-    // 角 + 王
-    const dirsDiag = [[-1,-1],[-1,1],[1,-1],[1,1]];
-    dirsDiag.forEach(([dr,dc])=>{
-      let nr = r+dr, nc=c+dc;
+  }
+  else if(pattern==="goldLike"){
+    DIRS.KI.forEach(([dr,dc])=>addStep(dr,dc));
+  }
+  else if(pattern==="diagPlusKing"){
+    const dirs=[[-1,-1],[-1,1],[1,-1],[1,1]];
+    dirs.forEach(([dr,dc])=>{
+      let nr=r+dr, nc=c+dc;
       while(inBounds(nr,nc)){
-        const target = board[nr][nc];
+        const target=board[nr][nc];
         if(target && target.owner===piece.owner) break;
         moves.push(makeMove(r,c,nr,nc,piece,target));
         if(target) break;
         nr+=dr; nc+=dc;
       }
     });
-    DIRS.OU.forEach(([dr,dc])=>{
-      const nr = r + dr*(piece.owner===SENTE?1:-1);
-      const nc = c + dc;
-      if(!inBounds(nr,nc)) return;
-      const target = board[nr][nc];
-      if(target && target.owner===piece.owner) return;
-      moves.push(makeMove(r,c,nr,nc,piece,target));
-    });
-  } else if(pattern==="orthPlusKing"){
-    // 飛 + 王
-    const dirsOrth = [[-1,0],[1,0],[0,-1],[0,1]];
-    dirsOrth.forEach(([dr,dc])=>{
-      let nr = r+dr, nc=c+dc;
+    DIRS.OU.forEach(([dr,dc])=>addStep(dr,dc));
+  }
+  else if(pattern==="orthPlusKing"){
+    const dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+    dirs.forEach(([dr,dc])=>{
+      let nr=r+dr, nc=c+dc;
       while(inBounds(nr,nc)){
-        const target = board[nr][nc];
+        const target=board[nr][nc];
         if(target && target.owner===piece.owner) break;
         moves.push(makeMove(r,c,nr,nc,piece,target));
         if(target) break;
         nr+=dr; nc+=dc;
       }
     });
-    DIRS.OU.forEach(([dr,dc])=>{
-      const nr = r + dr*(piece.owner===SENTE?1:-1);
-      const nc = c + dc;
-      if(!inBounds(nr,nc)) return;
-      const target = board[nr][nc];
-      if(target && target.owner===piece.owner) return;
-      moves.push(makeMove(r,c,nr,nc,piece,target));
-    });
-  } else {
+    DIRS.OU.forEach(([dr,dc])=>addStep(dr,dc));
+  }
+  else {
     pattern.forEach(([dr,dc])=>addStep(dr,dc));
   }
 
-  // 成り（簡易：敵陣に入る or 出る or 中にいるときは自動成り）
-  const result = [];
+  const result=[];
   moves.forEach(m=>{
     const zoneRow = piece.owner===SENTE ? 2 : 6;
     const inZoneFrom = piece.owner===SENTE ? (m.fromR<=zoneRow) : (m.fromR>=zoneRow);
     const inZoneTo   = piece.owner===SENTE ? (m.toR<=zoneRow)   : (m.toR>=zoneRow);
     const canPromote = PROMOTABLE.includes(piece.type) && (inZoneFrom || inZoneTo);
+
     if(canPromote){
-      const mProm = {...m, promote:true};
-      result.push(mProm);
-      // 自動成りにしたいならコメントアウト
-      const mNo = {...m, promote:false};
-      result.push(mNo);
+      result.push({...m,promote:true});
+      result.push({...m,promote:false});
     } else {
       result.push(m);
     }
   });
-
   return result;
 }
 
+/* ============================
+   成り駒の種類
+============================ */
 function promotedKey(type){
   if(type==="FU") return "TO";
   if(type==="KY") return "NY";
@@ -561,6 +513,9 @@ function promotedKey(type){
   return type;
 }
 
+/* ============================
+   指し手オブジェクト生成
+============================ */
 function makeMove(fromR,fromC,toR,toC,piece,capture){
   return {
     fromR,fromC,toR,toC,
@@ -573,16 +528,20 @@ function makeMove(fromR,fromC,toR,toC,piece,capture){
   };
 }
 
-function generateDropMoves(owner, fromHand){
-  const moves = [];
-  const type = fromHand.type;
+/* ============================
+   持ち駒の打ち手生成
+============================ */
+function generateDropMoves(owner,fromHand){
+  const moves=[];
+  const type=fromHand.type;
+
   for(let r=0;r<9;r++){
     for(let c=0;c<9;c++){
       if(board[r][c]) continue;
-      // 簡易：二歩などの細かいルールは無視
+
       moves.push({
-        fromR:null, fromC:null,
-        toR:r, toC:c,
+        fromR:null,fromC:null,
+        toR:r,toC:c,
         pieceType:type,
         owner,
         promoted:false,
@@ -595,37 +554,45 @@ function generateDropMoves(owner, fromHand){
   return moves;
 }
 
-/* --- 手の適用 --- */
+/* ============================
+   手の適用
+============================ */
 function applyMove(move){
   if(move.drop){
-    board[move.toR][move.toC] = {
+    board[move.toR][move.toC]={
       owner:move.owner,
       type:move.pieceType,
       promoted:false
     };
-    hands[move.owner][move.pieceType] = (hands[move.owner][move.pieceType]||0) - 1;
+    hands[move.owner][move.pieceType]--;
   } else {
-    const piece = board[move.fromR][move.fromC];
-    board[move.fromR][move.fromC] = null;
+    const piece=board[move.fromR][move.fromC];
+    board[move.fromR][move.fromC]=null;
+
     if(move.capture){
       const capType = move.capture.type;
       const baseType = move.capture.promoted ? unpromoteType(capType) : capType;
-      const owner = move.owner;
-      hands[owner][baseType] = (hands[owner][baseType]||0) + 1;
+      hands[move.owner][baseType]=(hands[move.owner][baseType]||0)+1;
     }
-    const newPiece = {
+
+    const newPiece={
       owner:piece.owner,
       type:piece.type,
       promoted:piece.promoted
     };
-    if(move.promote){
-      newPiece.promoted = true;
-    }
-    board[move.toR][move.toC] = newPiece;
+    if(move.promote) newPiece.promoted=true;
+
+    board[move.toR][move.toC]=newPiece;
   }
-  currentTurn *= -1;
+
+  currentTurn*=-1;
+
+  checkGameEnd();
 }
 
+/* ============================
+   成り駒 → 元の種類
+============================ */
 function unpromoteType(type){
   if(type==="FU") return "FU";
   if(type==="KY") return "KY";
@@ -633,67 +600,96 @@ function unpromoteType(type){
   if(type==="GI") return "GI";
   if(type==="KA") return "KA";
   if(type==="HI") return "HI";
-  return type; // 成り駒からの持ち駒は元の種類にしているのでここには来ない想定
+  return type;
 }
 
-/* --- AI --- */
+/* ============================
+   勝敗判定（玉と王を区別）
+============================ */
+function checkGameEnd(){
+  let senteKing=false;
+  let goteKing=false;
+
+  for(let r=0;r<9;r++){
+    for(let c=0;c<9;c++){
+      const p=board[r][c];
+      if(!p) continue;
+
+      if(p.type==="OU" && p.owner===SENTE) senteKing=true;
+      if((p.type==="OU"||p.type==="OU2") && p.owner===GOTE) goteKing=true;
+    }
+  }
+
+  if(!senteKing){
+    statusEl.textContent="後手（AI）の勝ち";
+    aiThinking=false;
+    return true;
+  }
+  if(!goteKing){
+    statusEl.textContent="先手（あなた）の勝ち";
+    aiThinking=false;
+    return true;
+  }
+  return false;
+}
+
+/* ============================
+   AI
+============================ */
 function aiTurn(){
   if(currentTurn!==GOTE) return;
-  aiThinking = true;
-  const difficulty = parseInt(document.getElementById("difficulty").value,10);
-  const moves = generateAllMoves(GOTE);
+  aiThinking=true;
+
+  const difficulty=parseInt(document.getElementById("difficulty").value,10);
+  const moves=generateAllMoves(GOTE);
+
   if(moves.length===0){
-    statusEl.textContent = "あなたの勝ち！";
-    aiThinking = false;
+    statusEl.textContent="あなたの勝ち！";
+    aiThinking=false;
     return;
   }
 
   let chosen;
+
   if(difficulty<=2){
-    // ランダム寄り
-    const scored = moves.map(m=>({m,score:evalMoveSimple(m,GOTE)}));
-    scored.sort((a,b)=>b.score-a.score);
-    const topN = Math.max(3, Math.floor(moves.length/4));
-    const cand = scored.slice(0,topN);
-    chosen = cand[Math.floor(Math.random()*cand.length)].m;
+    chosen=moves[Math.floor(Math.random()*moves.length)];
   } else {
-    // 簡易ミニマックス（深さ = 難易度）
-    const depth = Math.min(3 + (difficulty-3), 5);
-    let bestScore = -Infinity;
-    let bestMoves = [];
+    let bestScore=-Infinity;
+    let bestMoves=[];
+
     for(const m of moves){
-      const snapshot = snapshotState();
+      const snap=snapshotState();
       applyMove(m);
-      const score = -negamax(SENTE, depth-1, -Infinity, Infinity);
-      restoreState(snapshot);
+      const score=-negamax(SENTE, difficulty, -99999, 99999);
+      restoreState(snap);
+
       if(score>bestScore){
-        bestScore = score;
-        bestMoves = [m];
+        bestScore=score;
+        bestMoves=[m];
       } else if(score===bestScore){
         bestMoves.push(m);
       }
     }
-    chosen = bestMoves[Math.floor(Math.random()*bestMoves.length)];
+    chosen=bestMoves[Math.floor(Math.random()*bestMoves.length)];
   }
 
-  const name = moveToName(chosen, "AI");
+  showTopMessage(moveToName(chosen,"AI"));
   applyMove(chosen);
-  showTopMessage(name);
-  aiThinking = false;
+  aiThinking=false;
   render();
 }
 
 function generateAllMoves(owner){
-  const moves = [];
+  const moves=[];
   for(let r=0;r<9;r++){
     for(let c=0;c<9;c++){
-      const p = board[r][c];
+      const p=board[r][c];
       if(p && p.owner===owner){
         moves.push(...generateMovesFor(r,c,p));
       }
     }
   }
-  const h = hands[owner];
+  const h=hands[owner];
   Object.keys(h).forEach(type=>{
     if(h[type]>0){
       moves.push(...generateDropMoves(owner,{owner,type}));
@@ -703,51 +699,39 @@ function generateAllMoves(owner){
 }
 
 function materialScore(owner){
-  let score = 0;
+  let score=0;
   for(let r=0;r<9;r++){
     for(let c=0;c<9;c++){
-      const p = board[r][c];
+      const p=board[r][c];
       if(p){
-        const base = PIECES[p.type].value + (p.promoted?1:0);
-        score += (p.owner===owner?base:-base);
+        const base=PIECES[p.type].value+(p.promoted?1:0);
+        score+=(p.owner===owner?base:-base);
       }
     }
   }
-  const hS = hands[owner];
-  const hO = hands[-owner];
-  Object.keys(hS).forEach(t=>{ score += (PIECES[t].value||1)*hS[t]; });
-  Object.keys(hO).forEach(t=>{ score -= (PIECES[t].value||1)*hO[t]; });
+  const hS=hands[owner];
+  const hO=hands[-owner];
+  Object.keys(hS).forEach(t=>{score+=(PIECES[t].value||1)*hS[t];});
+  Object.keys(hO).forEach(t=>{score-=(PIECES[t].value||1)*hO[t];});
   return score;
 }
 
-function evalMoveSimple(m, owner){
-  let score = 0;
-  if(m.capture){
-    score += (PIECES[m.capture.type].value||1)*2;
-  }
-  if(m.promote) score += 1;
-  // 中央寄り
-  const centerDist = Math.abs(4-m.toR)+Math.abs(4-m.toC);
-  score += (8-centerDist)*0.1;
-  return score;
-}
+function negamax(player,depth,alpha,beta){
+  if(depth===0) return materialScore(player);
 
-function negamax(player, depth, alpha, beta){
-  if(depth===0){
-    return materialScore(player);
-  }
-  const moves = generateAllMoves(player);
-  if(moves.length===0){
-    return -9999;
-  }
-  let best = -Infinity;
+  const moves=generateAllMoves(player);
+  if(moves.length===0) return -9999;
+
+  let best=-Infinity;
+
   for(const m of moves){
-    const snap = snapshotState();
+    const snap=snapshotState();
     applyMove(m);
-    const score = -negamax(-player, depth-1, -beta, -alpha);
+    const score=-negamax(-player,depth-1,-beta,-alpha);
     restoreState(snap);
-    if(score>best) best = score;
-    if(score>alpha) alpha = score;
+
+    if(score>best) best=score;
+    if(score>alpha) alpha=score;
     if(alpha>=beta) break;
   }
   return best;
@@ -755,63 +739,67 @@ function negamax(player, depth, alpha, beta){
 
 function snapshotState(){
   return {
-    board: board.map(row=>row.map(p=>p?{...p}:null)),
-    hands: {
-      [SENTE]: {...hands[SENTE]},
-      [GOTE]: {...hands[GOTE]}
+    board:board.map(row=>row.map(p=>p?{...p}:null)),
+    hands:{
+      [SENTE]:{...hands[SENTE]},
+      [GOTE]:{...hands[GOTE]}
     },
     currentTurn
   };
 }
 
 function restoreState(snap){
-  board = snap.board.map(row=>row.map(p=>p?{...p}:null));
-  hands[SENTE] = {...snap.hands[SENTE]};
-  hands[GOTE] = {...snap.hands[GOTE]};
-  currentTurn = snap.currentTurn;
+  board=snap.board.map(row=>row.map(p=>p?{...p}:null));
+  hands[SENTE]={...snap.hands[SENTE]};
+  hands[GOTE]={...snap.hands[GOTE]};
+  currentTurn=snap.currentTurn;
 }
 
-/* --- 手の名前（簡易） --- */
-function moveToName(m, who){
-  const files = ["９","８","７","６","５","４","３","２","１"];
-  const ranks = ["一","二","三","四","五","六","七","八","九"];
-  const file = files[m.toC];
-  const rank = ranks[m.toR];
-  let pieceName = "";
+/* ============================
+   手の名前表示
+============================ */
+function moveToName(m,who){
+  const files=["９","８","７","６","５","４","３","２","１"];
+  const ranks=["一","二","三","四","五","六","七","八","九"];
+  const file=files[m.toC];
+  const rank=ranks[m.toR];
+
   if(m.drop){
-    pieceName = PIECES[m.pieceType].name;
-    return `${who}：${pieceName}打（${file}${rank}）`;
+    return `${who}：${PIECES[m.pieceType].name}打（${file}${rank}）`;
   } else {
-    const p = {type:m.pieceType, promoted:m.promote || m.promoted};
-    pieceName = displayName(p);
-    const cap = m.capture ? "x" : "";
-    const prom = m.promote ? "成" : "";
-    return `${who}：${pieceName}${cap}（${file}${rank}）${prom}`;
+    const name=displayName({type:m.pieceType,promoted:m.promote});
+    const cap=m.capture?"x":"";
+    const prom=m.promote?"成":"";
+    return `${who}：${name}${cap}（${file}${rank}）${prom}`;
   }
 }
 
-/* --- メッセージ表示 --- */
-let topMsgTimer = null;
+/* ============================
+   上部メッセージ
+============================ */
+let topMsgTimer=null;
 function showTopMessage(text){
-  topBarEl.textContent = text;
-  topBarEl.style.opacity = "1";
+  topBarEl.textContent=text;
+  topBarEl.style.opacity="1";
   if(topMsgTimer) clearTimeout(topMsgTimer);
-  topMsgTimer = setTimeout(()=>{
-    topBarEl.style.opacity = "0";
-  }, 2500);
+  topMsgTimer=setTimeout(()=>{topBarEl.style.opacity="0";},2500);
 }
 
-/* --- イベント --- */
-document.getElementById("toggleHighlight").addEventListener("change", e=>{
-  highlightOn = e.target.checked;
+/* ============================
+   イベント
+============================ */
+document.getElementById("toggleHighlight").addEventListener("change",e=>{
+  highlightOn=e.target.checked;
   render();
 });
-document.getElementById("resetBtn").addEventListener("click", ()=>{
+document.getElementById("resetBtn").addEventListener("click",()=>{
   initBoard();
   render();
 });
 
-/* --- 初期化 --- */
+/* ============================
+   初期化
+============================ */
 initBoard();
 buildBoardUI();
 render();
