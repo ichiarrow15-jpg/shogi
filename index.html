@@ -6,888 +6,920 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   :root {
-    --board-size: min(90vw, 520px);
+    --board-size: min(90vw, 90vh);
     --cell-size: calc(var(--board-size) / 9);
-    --bg: #f4f1e8;
-    --line: #333;
-    --black: #222;
-    --white: #fdfdfd;
-    --accent: #c48a3a;
+    --piece-font: clamp(14px, 3vw, 22px);
+    --info-font: clamp(12px, 2.5vw, 16px);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #e3dfd6;
+    background: #f4f4f4;
     display: flex;
     justify-content: center;
   }
   .app {
     width: 100%;
-    max-width: 640px;
-    padding: 8px 8px 24px;
+    max-width: 900px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
-  .top-bar {
+  header {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
-    margin-bottom: 8px;
+    justify-content: space-between;
+    font-size: var(--info-font);
   }
-  .top-bar label {
-    font-size: 13px;
+  header > div {
     display: flex;
     align-items: center;
     gap: 4px;
   }
-  select, input[type="checkbox"] {
-    accent-color: var(--accent);
+  select, button, input[type="checkbox"] {
+    font-size: var(--info-font);
   }
-  select {
-    padding: 2px 6px;
-    font-size: 13px;
+  .move-banner {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 0 0 6px 6px;
+    font-size: var(--info-font);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 1000;
   }
-  .hint-toggle {
-    margin-left: auto;
+  .move-banner.show {
+    opacity: 1;
+  }
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--info-font);
   }
   .captured-area {
     display: flex;
-    justify-content: space-between;
-    gap: 4px;
-    margin: 4px 0;
-    font-size: 12px;
-  }
-  .captured-box {
-    flex: 1;
-    min-height: 32px;
-    border: 1px solid #aaa;
-    background: #f9f7f2;
-    padding: 2px;
-    display: flex;
     flex-wrap: wrap;
-    gap: 2px;
+    gap: 4px;
+    min-height: 28px;
   }
-  .captured-label {
-    width: 3em;
-    text-align: center;
-    font-weight: 600;
-  }
-  .cap-piece {
+  .captured-piece {
     border: 1px solid #999;
-    padding: 1px 3px;
-    font-size: 11px;
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: var(--info-font);
     background: #fff;
     cursor: pointer;
   }
-  .board-wrap {
-    position: relative;
-    margin: 6px auto;
-    width: var(--board-size);
-    height: var(--board-size);
-    border: 3px solid #333;
-    background: var(--bg);
+  .captured-piece.selected {
+    outline: 2px solid #007aff;
+  }
+  .board-wrapper {
+    display: flex;
+    justify-content: center;
   }
   .board {
+    width: var(--board-size);
+    height: var(--board-size);
+    border: 2px solid #333;
     display: grid;
     grid-template-columns: repeat(9, 1fr);
     grid-template-rows: repeat(9, 1fr);
-    width: 100%;
-    height: 100%;
+    background: #f0d9b5;
+    touch-action: manipulation;
   }
   .cell {
-    border: 1px solid #555;
+    border: 1px solid #b58863;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: calc(var(--cell-size) * 0.45);
+    font-size: var(--piece-font);
     user-select: none;
   }
-  .cell.dark {
-    background: #e0d7c4;
+  .cell.highlight {
+    background: #f6f669;
+  }
+  .cell.move-target {
+    background: #b4e3ff;
   }
   .piece {
     width: 80%;
     height: 80%;
-    border-radius: 4px;
-    border: 1px solid #333;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
-    background: #fefefe;
-    color: #111;
-    transform-origin: center;
+    background: #fff;
+    border: 1px solid #333;
+    transform-origin: center center;
   }
-  .piece.black {
-    background: #fefefe;
+  .piece.sente {
+    transform: rotate(0deg);
   }
-  .piece.white {
-    background: #fefefe;
+  .piece.gote {
     transform: rotate(180deg);
+    background: #fdf7e3;
   }
-  .piece.promoted {
-    color: #b00000;
+  .piece.selected {
+    outline: 2px solid #007aff;
   }
-  .cell.selected {
-    outline: 3px solid #2b7cff;
-    z-index: 1;
-  }
-  .cell.move-target {
-    background: #cfe6ff;
-  }
-  .cell.last-move {
-    box-shadow: inset 0 0 0 3px rgba(255, 215, 0, 0.8);
-  }
-  .hint-overlay {
+  .direction-overlay {
     position: absolute;
-    top: 4px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 120px;
-    height: 120px;
-    pointer-events: none;
-    display: none;
-  }
-  .hint-grid {
-    width: 100%;
-    height: 100%;
+    inset: 0;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
-    font-size: 18px;
-    color: #333;
+    pointer-events: none;
+    font-size: 10px;
+    color: #444;
   }
-  .hint-cell {
+  .direction-overlay div {
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  .hint-center {
-    font-size: 14px;
-    font-weight: 600;
+  .bottom-bar {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--info-font);
   }
-  .turn-info {
-    text-align: center;
-    margin-top: 4px;
-    font-size: 13px;
-  }
-  .move-toast {
-    position: fixed;
-    top: 4px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(30, 30, 30, 0.9);
-    color: #fff;
-    padding: 6px 12px;
-    border-radius: 16px;
-    font-size: 12px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-    z-index: 999;
-  }
-  .move-toast.show {
-    opacity: 1;
-  }
-  @media (max-width: 480px) {
-    .top-bar {
-      flex-direction: row;
-      align-items: flex-start;
-    }
-    .hint-toggle {
-      margin-left: 0;
-    }
-    .captured-label {
-      font-size: 11px;
-    }
+  .status {
+    font-size: var(--info-font);
   }
 </style>
 </head>
 <body>
+<div class="move-banner" id="moveBanner"></div>
 <div class="app">
-  <div class="top-bar">
-    <label>難易度
+  <header>
+    <div>
+      難易度:
       <select id="difficulty">
-        <option value="1">1（やさしい）</option>
+        <option value="1">1（かなり弱い）</option>
         <option value="2">2</option>
         <option value="3" selected>3</option>
         <option value="4">4</option>
-        <option value="5">5（つよい）</option>
+        <option value="5">5（できるだけ強く）</option>
       </select>
-    </label>
-    <label class="hint-toggle">
-      <input type="checkbox" id="hintToggle"> 駒のいける方向
-    </label>
+    </div>
+    <div>
+      <label>
+        <input type="checkbox" id="dirToggle" checked>
+        駒のいける方向
+      </label>
+    </div>
+    <button id="resetBtn">リセット</button>
+  </header>
+
+  <div class="top-bar">
+    <div>後手 持ち駒:</div>
+    <div class="captured-area" id="goteCaptured"></div>
   </div>
 
-  <div class="captured-area">
-    <div class="captured-label">先手</div>
-    <div id="capturedBlack" class="captured-box"></div>
+  <div class="board-wrapper">
+    <div class="board" id="board"></div>
   </div>
-  <div class="board-wrap">
-    <div id="board" class="board"></div>
-    <div id="hintOverlay" class="hint-overlay">
-      <div class="hint-grid">
-        <div class="hint-cell" data-dir="nw"></div>
-        <div class="hint-cell" data-dir="n"></div>
-        <div class="hint-cell" data-dir="ne"></div>
-        <div class="hint-cell" data-dir="w"></div>
-        <div class="hint-cell hint-center" data-dir="c"></div>
-        <div class="hint-cell" data-dir="e"></div>
-        <div class="hint-cell" data-dir="sw"></div>
-        <div class="hint-cell" data-dir="s"></div>
-        <div class="hint-cell" data-dir="se"></div>
-      </div>
-    </div>
+
+  <div class="bottom-bar">
+    <div>先手 持ち駒:</div>
+    <div class="captured-area" id="senteCaptured"></div>
   </div>
-  <div class="captured-area">
-    <div class="captured-label">後手</div>
-    <div id="capturedWhite" class="captured-box"></div>
-  </div>
-  <div class="turn-info" id="turnInfo"></div>
+
+  <div class="status" id="status"></div>
 </div>
 
-<div id="moveToast" class="move-toast"></div>
-
 <script>
-/*
-  盤・駒表現
-  side: "b" 先手, "w" 後手
-  type: "FU","KY","KE","GI","KI","KA","HI","OU"
-*/
-const PIECE_NAMES = {
-  FU: "歩", KY: "香", KE: "桂", GI: "銀",
-  KI: "金", KA: "角", HI: "飛", OU: "王",
-  TO: "と", NY: "成香", NK: "成桂", NG: "成銀",
-  UM: "馬", RY: "竜"
-};
-const PROMOTE_MAP = {
-  FU: "TO", KY: "NY", KE: "NK", GI: "NG", KA: "UM", HI: "RY"
-};
-const UNPROMOTE_MAP = {
-  TO: "FU", NY: "KY", NK: "KE", NG: "GI", UM: "KA", RY: "HI"
-};
-const PIECE_VALUE = {
-  FU: 1, KY: 3, KE: 3, GI: 4, KI: 5, KA: 8, HI: 9, OU: 1000,
-  TO: 5, NY: 5, NK: 5, NG: 5, UM: 10, RY: 11
-};
+  // 駒定義
+  const PIECES = {
+    FU: { name: "歩", value: 1 },
+    KY: { name: "香", value: 3 },
+    KE: { name: "桂", value: 3 },
+    GI: { name: "銀", value: 4 },
+    KI: { name: "金", value: 5 },
+    KA: { name: "角", value: 8 },
+    HI: { name: "飛", value: 9 },
+    OU: { name: "王", value: 100 },
+    TO: { name: "と", value: 5 },
+    NY: { name: "成香", value: 5 },
+    NK: { name: "成桂", value: 5 },
+    NG: { name: "成銀", value: 5 },
+    UM: { name: "馬", value: 11 },
+    RY: { name: "竜", value: 12 }
+  };
 
-let board = [];
-let turn = "b"; // 先手
-let selected = null; // {x,y} or {drop:true, type, side}
-let legalTargets = [];
-let lastMove = null;
-let captured = { b: [], w: [] };
-let gameOver = false;
+  const SENTE = "s";
+  const GOTE = "g";
 
-const boardEl = document.getElementById("board");
-const hintOverlay = document.getElementById("hintOverlay");
-const hintToggle = document.getElementById("hintToggle");
-const capturedBlackEl = document.getElementById("capturedBlack");
-const capturedWhiteEl = document.getElementById("capturedWhite");
-const turnInfo = document.getElementById("turnInfo");
-const moveToast = document.getElementById("moveToast");
-const difficultySelect = document.getElementById("difficulty");
+  const boardEl = document.getElementById("board");
+  const statusEl = document.getElementById("status");
+  const senteCapturedEl = document.getElementById("senteCaptured");
+  const goteCapturedEl = document.getElementById("goteCaptured");
+  const difficultyEl = document.getElementById("difficulty");
+  const dirToggleEl = document.getElementById("dirToggle");
+  const resetBtn = document.getElementById("resetBtn");
+  const moveBanner = document.getElementById("moveBanner");
 
-function initBoard() {
-  board = Array.from({ length: 9 }, () => Array(9).fill(null));
-  function place(y, x, side, type) {
-    board[y][x] = { side, type, promoted: false };
+  let board = [];
+  let turn = SENTE;
+  let selected = null; // {x,y} or null
+  let selectedDrop = null; // {owner,type}
+  let legalMoves = [];
+  let showDirections = true;
+  let bannerTimeout = null;
+
+  function initBoard() {
+    board = Array.from({ length: 9 }, () => Array(9).fill(null));
+
+    // 先手
+    place(0, 8, SENTE, "KY");
+    place(1, 8, SENTE, "KE");
+    place(2, 8, SENTE, "GI");
+    place(3, 8, SENTE, "KI");
+    place(4, 8, SENTE, "OU");
+    place(5, 8, SENTE, "KI");
+    place(6, 8, SENTE, "GI");
+    place(7, 8, SENTE, "KE");
+    place(8, 8, SENTE, "KY");
+    place(1, 7, SENTE, "HI");
+    place(7, 7, SENTE, "KA");
+    for (let x = 0; x < 9; x++) place(x, 6, SENTE, "FU");
+
+    // 後手
+    place(0, 0, GOTE, "KY");
+    place(1, 0, GOTE, "KE");
+    place(2, 0, GOTE, "GI");
+    place(3, 0, GOTE, "KI");
+    place(4, 0, GOTE, "OU");
+    place(5, 0, GOTE, "KI");
+    place(6, 0, GOTE, "GI");
+    place(7, 0, GOTE, "KE");
+    place(8, 0, GOTE, "KY");
+    place(7, 1, GOTE, "HI");
+    place(1, 1, GOTE, "KA");
+    for (let x = 0; x < 9; x++) place(x, 2, GOTE, "FU");
   }
-  // 後手
-  place(0, 0, "w", "KY"); place(0, 1, "w", "KE"); place(0, 2, "w", "GI");
-  place(0, 3, "w", "KI"); place(0, 4, "w", "OU"); place(0, 5, "w", "KI");
-  place(0, 6, "w", "GI"); place(0, 7, "w", "KE"); place(0, 8, "w", "KY");
-  place(1, 1, "w", "KA"); place(1, 7, "w", "HI");
-  for (let x = 0; x < 9; x++) place(2, x, "w", "FU");
-  // 先手
-  place(8, 0, "b", "KY"); place(8, 1, "b", "KE"); place(8, 2, "b", "GI");
-  place(8, 3, "b", "KI"); place(8, 4, "b", "OU"); place(8, 5, "b", "KI");
-  place(8, 6, "b", "GI"); place(8, 7, "b", "KE"); place(8, 8, "b", "KY");
-  place(7, 1, "b", "HI"); place(7, 7, "b", "KA");
-  for (let x = 0; x < 9; x++) place(6, x, "b", "FU");
 
-  captured = { b: [], w: [] };
-  turn = "b";
-  selected = null;
-  legalTargets = [];
-  lastMove = null;
-  gameOver = false;
-  render();
-}
-
-function createBoardUI() {
-  boardEl.innerHTML = "";
-  for (let y = 0; y < 9; y++) {
-    for (let x = 0; x < 9; x++) {
-      const cell = document.createElement("div");
-      cell.className = "cell" + ((x + y) % 2 ? " dark" : "");
-      cell.dataset.x = x;
-      cell.dataset.y = y;
-      cell.addEventListener("click", () => onCellClick(x, y));
-      boardEl.appendChild(cell);
-    }
+  function place(x, y, owner, type, promoted = false) {
+    board[y][x] = { owner, type, promoted };
   }
-}
 
-function render() {
-  const cells = boardEl.children;
-  for (let y = 0; y < 9; y++) {
-    for (let x = 0; x < 9; x++) {
-      const idx = y * 9 + x;
-      const cell = cells[idx];
-      cell.innerHTML = "";
-      cell.classList.remove("selected", "move-target", "last-move");
-      const p = board[y][x];
-      if (p) {
-        const div = document.createElement("div");
-        div.className = "piece " + (p.side === "b" ? "black" : "white");
-        if (p.promoted) div.classList.add("promoted");
-        div.textContent = PIECE_NAMES[p.type] || p.type;
-        cell.appendChild(div);
-      }
-      if (selected && selected.x === x && selected.y === y && !selected.drop) {
-        cell.classList.add("selected");
-      }
-      if (legalTargets.some(t => t.x === x && t.y === y)) {
-        cell.classList.add("move-target");
-      }
-      if (lastMove && lastMove.to.x === x && lastMove.to.y === y) {
-        cell.classList.add("last-move");
+  function render() {
+    boardEl.innerHTML = "";
+    for (let y = 0; y < 9; y++) {
+      for (let x = 0; x < 9; x++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.x = x;
+        cell.dataset.y = y;
+
+        if (selected && selected.x === x && selected.y === y) {
+          cell.classList.add("highlight");
+        }
+
+        const moveTargets = legalMoves.filter(m => m.to.x === x && m.to.y === y);
+        if (moveTargets.length) {
+          cell.classList.add("move-target");
+        }
+
+        const piece = board[y][x];
+        if (piece) {
+          const pEl = document.createElement("div");
+          pEl.className = "piece " + (piece.owner === SENTE ? "sente" : "gote");
+          pEl.textContent = displayPieceName(piece);
+          if (selected && selected.x === x && selected.y === y) {
+            pEl.classList.add("selected");
+          }
+          cell.appendChild(pEl);
+
+          if (showDirections && selected && selected.x === x && selected.y === y) {
+            const overlay = document.createElement("div");
+            overlay.className = "direction-overlay";
+            const dirs = directionGrid(piece);
+            for (let i = 0; i < 9; i++) {
+              const d = document.createElement("div");
+              d.textContent = dirs[i] || "";
+              overlay.appendChild(d);
+            }
+            cell.appendChild(overlay);
+          }
+        }
+
+        cell.addEventListener("click", onCellClick);
+        boardEl.appendChild(cell);
       }
     }
+    renderCaptured();
+    statusEl.textContent = (turn === SENTE ? "先手" : "後手") + "の手番";
   }
-  renderCaptured();
-  turnInfo.textContent = gameOver
-    ? "対局終了"
-    : (turn === "b" ? "先手の手番（あなた）" : "後手の手番（コンピュータ）");
-}
 
-function renderCaptured() {
-  capturedBlackEl.innerHTML = "";
-  capturedWhiteEl.innerHTML = "";
-  function addCap(side, el) {
-    const counts = {};
-    for (const t of captured[side]) {
-      counts[t] = (counts[t] || 0) + 1;
+  function displayPieceName(p) {
+    if (p.promoted) {
+      switch (p.type) {
+        case "FU": return PIECES.TO.name;
+        case "KY": return PIECES.NY.name;
+        case "KE": return PIECES.NK.name;
+        case "GI": return PIECES.NG.name;
+        case "KA": return PIECES.UM.name;
+        case "HI": return PIECES.RY.name;
+      }
     }
-    Object.keys(counts).forEach(type => {
-      const btn = document.createElement("div");
-      btn.className = "cap-piece";
-      btn.textContent = PIECE_NAMES[type] + (counts[type] > 1 ? "×" + counts[type] : "");
-      btn.addEventListener("click", () => onCapturedClick(side, type));
-      el.appendChild(btn);
+    return PIECES[p.type].name;
+  }
+
+  function directionGrid(piece) {
+    // 3x3 上から左上→右下
+    const g = Array(9).fill("");
+    const owner = piece.owner;
+    const forward = owner === SENTE ? -1 : 1;
+
+    function setDir(dx, dy, symbol) {
+      const cx = dx + 1;
+      const cy = dy + 1;
+      const idx = cy * 3 + cx;
+      g[idx] = symbol;
+    }
+
+    const addBasic = (dirs) => {
+      dirs.forEach(([dx, dy]) => {
+        if (dx === 0 && dy === -1) setDir(0, -1, "↑");
+        if (dx === 0 && dy === 1) setDir(0, 1, "↓");
+        if (dx === -1 && dy === 0) setDir(-1, 0, "←");
+        if (dx === 1 && dy === 0) setDir(1, 0, "→");
+        if (dx === -1 && dy === -1) setDir(-1, -1, "↖");
+        if (dx === 1 && dy === -1) setDir(1, -1, "↗");
+        if (dx === -1 && dy === 1) setDir(-1, 1, "↙");
+        if (dx === 1 && dy === 1) setDir(1, 1, "↘");
+      });
+    };
+
+    const t = piece.type;
+    const prom = piece.promoted;
+
+    if (t === "OU") {
+      addBasic([[0,-1],[0,1],[-1,0],[1,0],[-1,-1],[1,-1],[-1,1],[1,1]]);
+    } else if (t === "FU" && !prom) {
+      addBasic([[0, forward]]);
+    } else if (t === "KY" && !prom) {
+      addBasic([[0, forward]]);
+    } else if (t === "KE" && !prom) {
+      addBasic([[-1, 2*forward],[1, 2*forward]]);
+    } else if (t === "GI" && !prom) {
+      addBasic([[0, forward],[-1, forward],[1, forward],[-1,-forward],[1,-forward]]);
+    } else if (t === "KA" && !prom) {
+      addBasic([[-1,-1],[1,-1],[-1,1],[1,1]]);
+    } else if (t === "HI" && !prom) {
+      addBasic([[0,-1],[0,1],[-1,0],[1,0]]);
+    } else if (prom || t === "KI") {
+      if (owner === SENTE) {
+        addBasic([[0,-1],[-1,-1],[1,-1],[-1,0],[1,0],[0,1]]);
+      } else {
+        addBasic([[0,1],[-1,1],[1,1],[-1,0],[1,0],[0,-1]]);
+      }
+    } else if (t === "KA" && prom) {
+      addBasic([[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1],[-1,0],[1,0]]);
+    } else if (t === "HI" && prom) {
+      addBasic([[0,-1],[0,1],[-1,0],[1,0],[-1,-1],[1,-1],[-1,1],[1,1]]);
+    }
+
+    return g;
+  }
+
+  function onCellClick(e) {
+    const x = parseInt(e.currentTarget.dataset.x, 10);
+    const y = parseInt(e.currentTarget.dataset.y, 10);
+    const piece = board[y][x];
+
+    if (selectedDrop) {
+      // 持ち駒打ち
+      const moves = generateDropMoves(turn);
+      const move = moves.find(m => m.to.x === x && m.to.y === y && m.dropType === selectedDrop.type);
+      if (move) {
+        applyMove(move, true);
+        selectedDrop = null;
+        clearDropSelection();
+        nextTurn();
+      } else {
+        selectedDrop = null;
+        clearDropSelection();
+      }
+      render();
+      return;
+    }
+
+    if (selected) {
+      const move = legalMoves.find(m => m.to.x === x && m.to.y === y);
+      if (move) {
+        applyMove(move, true);
+        selected = null;
+        legalMoves = [];
+        render();
+        nextTurn();
+        return;
+      }
+    }
+
+    if (piece && piece.owner === turn) {
+      selected = { x, y };
+      legalMoves = generateMovesFor(turn, x, y);
+    } else {
+      selected = null;
+      legalMoves = [];
+    }
+    render();
+  }
+
+  function renderCaptured() {
+    senteCapturedEl.innerHTML = "";
+    goteCapturedEl.innerHTML = "";
+
+    const senteCaps = getCaptured(SENTE);
+    const goteCaps = getCaptured(GOTE);
+
+    senteCaps.forEach(p => {
+      const el = document.createElement("div");
+      el.className = "captured-piece";
+      el.textContent = PIECES[p.type].name + (p.count > 1 ? `×${p.count}` : "");
+      el.addEventListener("click", () => selectDrop(SENTE, p.type, el));
+      senteCapturedEl.appendChild(el);
+    });
+
+    goteCaps.forEach(p => {
+      const el = document.createElement("div");
+      el.className = "captured-piece";
+      el.textContent = PIECES[p.type].name + (p.count > 1 ? `×${p.count}` : "");
+      el.addEventListener("click", () => selectDrop(GOTE, p.type, el));
+      goteCapturedEl.appendChild(el);
     });
   }
-  addCap("b", capturedBlackEl);
-  addCap("w", capturedWhiteEl);
-}
 
-function onCapturedClick(side, type) {
-  if (gameOver) return;
-  if (turn !== side) return;
-  selected = { drop: true, side, type };
-  legalTargets = generateDropTargets(side, type);
-  updateHintForSelected();
-  render();
-}
-
-function onCellClick(x, y) {
-  if (gameOver) return;
-  if (turn === "w") return; // プレイヤーは先手のみ
-  const p = board[y][x];
-  if (!selected) {
-    if (p && p.side === turn) {
-      selected = { x, y };
-      legalTargets = generateMovesFrom(x, y, board, turn);
-      updateHintForSelected();
+  function getCaptured(owner) {
+    const list = [];
+    for (const p of capturedPieces[owner]) {
+      const existing = list.find(x => x.type === p.type);
+      if (existing) existing.count++;
+      else list.push({ type: p.type, count: 1 });
     }
-  } else {
-    const isTarget = legalTargets.some(t => t.x === x && t.y === y);
-    if (isTarget) {
-      if (selected.drop) {
-        doMove({
-          from: null,
-          to: { x, y },
-          drop: true,
-          type: selected.type,
-          side: selected.side
-        }, true);
-      } else {
-        const fromPiece = board[selected.y][selected.x];
-        const promote = shouldAutoPromote(fromPiece, selected.y, y, fromPiece.side);
-        doMove({
-          from: { x: selected.x, y: selected.y },
-          to: { x, y },
-          drop: false,
-          promote
-        }, true);
-      }
-      selected = null;
-      legalTargets = [];
-      updateHintForSelected();
-    } else {
-      if (p && p.side === turn) {
-        selected = { x, y };
-        legalTargets = generateMovesFrom(x, y, board, turn);
-        updateHintForSelected();
-      } else {
-        selected = null;
-        legalTargets = [];
-        updateHintForSelected();
-      }
-    }
+    return list;
   }
-  render();
-  if (!gameOver && turn === "w") {
-    setTimeout(aiTurn, 200);
+
+  function selectDrop(owner, type, el) {
+    if (owner !== turn) return;
+    selected = null;
+    legalMoves = [];
+    selectedDrop = { owner, type };
+    clearDropSelection();
+    el.classList.add("selected");
+    render();
   }
-}
 
-function inBounds(x, y) {
-  return x >= 0 && x < 9 && y >= 0 && y < 9;
-}
-
-function cloneBoard(srcBoard) {
-  return srcBoard.map(row => row.map(p => p ? { ...p } : null));
-}
-
-function isPromotionZone(side, y) {
-  return side === "b" ? y <= 2 : y >= 6;
-}
-
-function shouldAutoPromote(piece, fromY, toY, side) {
-  if (!piece) return false;
-  const baseType = piece.type;
-  if (!PROMOTE_MAP[baseType]) return false;
-  if (!isPromotionZone(side, fromY) && !isPromotionZone(side, toY)) return false;
-  if (baseType === "FU" || baseType === "KY") {
-    if ((side === "b" && toY === 0) || (side === "w" && toY === 8)) return true;
+  function clearDropSelection() {
+    document.querySelectorAll(".captured-piece").forEach(el => el.classList.remove("selected"));
   }
-  if (baseType === "KE") {
-    if ((side === "b" && toY <= 1) || (side === "w" && toY >= 7)) return true;
-  }
-  return true;
-}
 
-function generateMovesFrom(x, y, b, side) {
-  const p = b[y][x];
-  if (!p || p.side !== side) return [];
-  const moves = [];
-  const dir = side === "b" ? -1 : 1;
-  const add = (nx, ny, slide = false, dx = 0, dy = 0) => {
-    let cx = nx, cy = ny;
-    while (inBounds(cx, cy)) {
-      const t = b[cy][cx];
-      if (!t || t.side !== side) {
-        moves.push({ x: cx, y: cy });
-      }
-      if (t) break;
-      if (!slide) break;
-      cx += dx; cy += dy;
-    }
+  // 持ち駒管理
+  let capturedPieces = {
+    [SENTE]: [],
+    [GOTE]: []
   };
-  const type = p.type;
-  const prom = p.promoted;
-  if (type === "OU") {
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        const nx = x + dx, ny = y + dy;
-        if (inBounds(nx, ny)) {
-          const t = b[ny][nx];
-          if (!t || t.side !== side) moves.push({ x: nx, y: ny });
+
+  function resetCaptured() {
+    capturedPieces[SENTE] = [];
+    capturedPieces[GOTE] = [];
+  }
+
+  function capturePiece(piece, captorOwner) {
+    const baseType = basePieceType(piece.type);
+    capturedPieces[captorOwner].push({ type: baseType });
+  }
+
+  function basePieceType(type) {
+    switch (type) {
+      case "TO": return "FU";
+      case "NY": return "KY";
+      case "NK": return "KE";
+      case "NG": return "GI";
+      case "UM": return "KA";
+      case "RY": return "HI";
+      default: return type;
+    }
+  }
+
+  // 手生成
+  function generateAllMoves(owner) {
+    const moves = [];
+    for (let y = 0; y < 9; y++) {
+      for (let x = 0; x < 9; x++) {
+        const p = board[y][x];
+        if (p && p.owner === owner) {
+          moves.push(...generateMovesFor(owner, x, y));
         }
       }
     }
-  } else if (type === "HI" || type === "RY") {
-    add(x, y - 1, true, 0, -1);
-    add(x, y + 1, true, 0, 1);
-    add(x - 1, y, true, -1, 0);
-    add(x + 1, y, true, 1, 0);
-    if (type === "RY") {
-      for (let dy = -1; dy <= 1; dy += 2) {
-        for (let dx = -1; dx <= 1; dx += 2) {
-          const nx = x + dx, ny = y + dy;
-          if (inBounds(nx, ny)) {
-            const t = b[ny][nx];
-            if (!t || t.side !== side) moves.push({ x: nx, y: ny });
+    moves.push(...generateDropMoves(owner));
+    return moves;
+  }
+
+  function generateMovesFor(owner, x, y) {
+    const p = board[y][x];
+    if (!p || p.owner !== owner) return [];
+    const moves = [];
+    const forward = owner === SENTE ? -1 : 1;
+
+    const addStep = (dx, dy) => {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || nx > 8 || ny < 0 || ny > 8) return;
+      const target = board[ny][nx];
+      if (!target || target.owner !== owner) {
+        moves.push(makeMove(x, y, nx, ny, p));
+      }
+    };
+
+    const addSlide = (dx, dy) => {
+      let nx = x + dx;
+      let ny = y + dy;
+      while (nx >= 0 && nx < 9 && ny >= 0 && ny < 9) {
+        const target = board[ny][nx];
+        if (!target) {
+          moves.push(makeMove(x, y, nx, ny, p));
+        } else {
+          if (target.owner !== owner) {
+            moves.push(makeMove(x, y, nx, ny, p));
+          }
+          break;
+        }
+        nx += dx;
+        ny += dy;
+      }
+    };
+
+    const t = p.type;
+    const prom = p.promoted;
+
+    if (t === "OU") {
+      [[0,-1],[0,1],[-1,0],[1,0],[-1,-1],[1,-1],[-1,1],[1,1]].forEach(d => addStep(d[0], d[1]));
+    } else if (t === "FU" && !prom) {
+      addStep(0, forward);
+    } else if (t === "KY" && !prom) {
+      addSlide(0, forward);
+    } else if (t === "KE" && !prom) {
+      [[-1,2*forward],[1,2*forward]].forEach(d => addStep(d[0], d[1]));
+    } else if (t === "GI" && !prom) {
+      [[0,forward],[-1,forward],[1,forward],[-1,-forward],[1,-forward]].forEach(d => addStep(d[0], d[1]));
+    } else if (t === "KA" && !prom) {
+      [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(d => addSlide(d[0], d[1]));
+    } else if (t === "HI" && !prom) {
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(d => addSlide(d[0], d[1]));
+    } else if (prom || t === "KI") {
+      if (owner === SENTE) {
+        [[0,-1],[-1,-1],[1,-1],[-1,0],[1,0],[0,1]].forEach(d => addStep(d[0], d[1]));
+      } else {
+        [[0,1],[-1,1],[1,1],[-1,0],[1,0],[0,-1]].forEach(d => addStep(d[0], d[1]));
+      }
+    } else if (t === "KA" && prom) {
+      [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(d => addSlide(d[0], d[1]));
+      [[0,1],[0,-1],[1,0],[-1,0]].forEach(d => addStep(d[0], d[1]));
+    } else if (t === "HI" && prom) {
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(d => addSlide(d[0], d[1]));
+      [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(d => addStep(d[0], d[1]));
+    }
+
+    // 自動成り（簡易）
+    const finalMoves = [];
+    for (const m of moves) {
+      const piece = board[y][x];
+      const zoneFrom = inPromotionZone(owner, y);
+      const zoneTo = inPromotionZone(owner, m.to.y);
+      if (piece.type === "OU" || piece.type === "KI") {
+        finalMoves.push(m);
+      } else if (!piece.promoted && (zoneFrom || zoneTo)) {
+        // 歩・香・桂は最終段に行くときは強制成り
+        if (mustPromote(piece.type, owner, m.to.y)) {
+          const pm = { ...m, promote: true };
+          finalMoves.push(pm);
+        } else {
+          finalMoves.push(m);
+          const pm = { ...m, promote: true };
+          finalMoves.push(pm);
+        }
+      } else {
+        finalMoves.push(m);
+      }
+    }
+
+    // 王手放置は除外（簡易チェック）
+    return finalMoves.filter(m => !leavesKingInCheck(owner, m));
+  }
+
+  function inPromotionZone(owner, y) {
+    return owner === SENTE ? y <= 2 : y >= 6;
+  }
+
+  function mustPromote(type, owner, toY) {
+    if (type === "FU" || type === "KY") {
+      return owner === SENTE ? toY === 0 : toY === 8;
+    }
+    if (type === "KE") {
+      return owner === SENTE ? toY <= 1 : toY >= 7;
+    }
+    return false;
+  }
+
+  function makeMove(fromX, fromY, toX, toY, piece) {
+    return {
+      from: { x: fromX, y: fromY },
+      to: { x: toX, y: toY },
+      pieceType: piece.type,
+      promote: false
+    };
+  }
+
+  function generateDropMoves(owner) {
+    const moves = [];
+    const caps = capturedPieces[owner];
+    if (!caps.length) return moves;
+
+    const counts = {};
+    caps.forEach(p => {
+      const t = p.type;
+      counts[t] = (counts[t] || 0) + 1;
+    });
+
+    for (const type in counts) {
+      for (let y = 0; y < 9; y++) {
+        for (let x = 0; x < 9; x++) {
+          if (board[y][x]) continue;
+          if (type === "FU") {
+            // 二歩禁止（簡易）
+            let sameFilePawn = false;
+            for (let yy = 0; yy < 9; yy++) {
+              const p = board[yy][x];
+              if (p && p.owner === owner && p.type === "FU" && !p.promoted) {
+                sameFilePawn = true;
+                break;
+              }
+            }
+            if (sameFilePawn) continue;
+            // 打ち歩詰めは未対応（簡略）
+            if (owner === SENTE && y === 0) continue;
+            if (owner === GOTE && y === 8) continue;
+          }
+          if (type === "KY") {
+            if (owner === SENTE && y === 0) continue;
+            if (owner === GOTE && y === 8) continue;
+          }
+          if (type === "KE") {
+            if (owner === SENTE && y <= 1) continue;
+            if (owner === GOTE && y >= 7) continue;
+          }
+          const move = {
+            drop: true,
+            dropType: type,
+            owner,
+            to: { x, y }
+          };
+          if (!leavesKingInCheck(owner, move)) {
+            moves.push(move);
           }
         }
       }
     }
-  } else if (type === "KA" || type === "UM") {
-    add(x - 1, y - 1, true, -1, -1);
-    add(x + 1, y - 1, true, 1, -1);
-    add(x - 1, y + 1, true, -1, 1);
-    add(x + 1, y + 1, true, 1, 1);
-    if (type === "UM") {
-      const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-      for (const [dx, dy] of dirs) {
-        const nx = x + dx, ny = y + dy;
-        if (inBounds(nx, ny)) {
-          const t = b[ny][nx];
-          if (!t || t.side !== side) moves.push({ x: nx, y: ny });
-        }
-      }
-    }
-  } else {
-    const goldLike = prom || type === "KI" || ["TO", "NY", "NK", "NG"].includes(type);
-    if (goldLike) {
-      const dirs = side === "b"
-        ? [[0, -1], [-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]]
-        : [[0, 1], [-1, 1], [1, 1], [-1, 0], [1, 0], [0, -1]];
-      for (const [dx, dy] of dirs) {
-        const nx = x + dx, ny = y + dy;
-        if (!inBounds(nx, ny)) continue;
-        const t = b[ny][nx];
-        if (!t || t.side !== side) moves.push({ x: nx, y: ny });
-      }
-    } else if (type === "FU") {
-      const nx = x, ny = y + dir;
-      if (inBounds(nx, ny)) {
-        const t = b[ny][nx];
-        if (!t || t.side !== side) moves.push({ x: nx, y: ny });
-      }
-    } else if (type === "KY") {
-      add(x, y + dir, true, 0, dir);
-    } else if (type === "KE") {
-      const steps = side === "b" ? [[-1, -2], [1, -2]] : [[-1, 2], [1, 2]];
-      for (const [dx, dy] of steps) {
-        const nx = x + dx, ny = y + dy;
-        if (!inBounds(nx, ny)) continue;
-        const t = b[ny][nx];
-        if (!t || t.side !== side) moves.push({ x: nx, y: ny });
-      }
-    } else if (type === "GI") {
-      const dirs = side === "b"
-        ? [[0, -1], [-1, -1], [1, -1], [-1, 1], [1, 1]]
-        : [[0, 1], [-1, 1], [1, 1], [-1, -1], [1, -1]];
-      for (const [dx, dy] of dirs) {
-        const nx = x + dx, ny = y + dy;
-        if (!inBounds(nx, ny)) continue;
-        const t = b[ny][nx];
-        if (!t || t.side !== side) moves.push({ x: nx, y: ny });
-      }
-    }
+    return moves;
   }
-  return moves;
-}
 
-function generateDropTargets(side, type) {
-  const targets = [];
-  for (let y = 0; y < 9; y++) {
-    for (let x = 0; x < 9; x++) {
-      if (board[y][x]) continue;
-      if (type === "FU" || type === "KY") {
-        if ((side === "b" && y === 0) || (side === "w" && y === 8)) continue;
+  function cloneBoardState() {
+    return {
+      board: board.map(row => row.map(p => p ? { ...p } : null)),
+      captured: {
+        [SENTE]: capturedPieces[SENTE].map(p => ({ ...p })),
+        [GOTE]: capturedPieces[GOTE].map(p => ({ ...p }))
       }
-      if (type === "KE") {
-        if ((side === "b" && y <= 1) || (side === "w" && y >= 7)) continue;
-      }
-      targets.push({ x, y });
-    }
-  }
-  return targets;
-}
-
-function allMovesForSide(b, side) {
-  const moves = [];
-  for (let y = 0; y < 9; y++) {
-    for (let x = 0; x < 9; x++) {
-      const p = b[y][x];
-      if (!p || p.side !== side) continue;
-      const list = generateMovesFrom(x, y, b, side);
-      for (const t of list) {
-        const promote = shouldAutoPromote(p, y, t.y, side);
-        moves.push({
-          from: { x, y },
-          to: { x: t.x, y: t.y },
-          drop: false,
-          promote
-        });
-      }
-    }
-  }
-  const caps = side === "b" ? captured.b : captured.w;
-  const uniqueTypes = [...new Set(caps)];
-  for (const type of uniqueTypes) {
-    const targets = generateDropTargets(side, type);
-    for (const t of targets) {
-      moves.push({
-        from: null,
-        to: { x: t.x, y: t.y },
-        drop: true,
-        type,
-        side
-      });
-    }
-  }
-  return moves;
-}
-
-function applyMove(b, move, capState) {
-  const nb = cloneBoard(b);
-  const nc = { b: [...capState.b], w: [...capState.w] };
-  if (move.drop) {
-    nb[move.to.y][move.to.x] = {
-      side: move.side,
-      type: move.type,
-      promoted: false
     };
-    const arr = nc[move.side];
-    const idx = arr.indexOf(move.type);
-    if (idx >= 0) arr.splice(idx, 1);
-  } else {
-    const p = nb[move.from.y][move.from.x];
-    nb[move.from.y][move.from.x] = null;
-    let capturedPiece = nb[move.to.y][move.to.x];
-    if (capturedPiece) {
-      const baseType = UNPROMOTE_MAP[capturedPiece.type] || capturedPiece.type;
-      const owner = p.side;
-      nc[owner].push(baseType);
+  }
+
+  function restoreBoardState(state) {
+    board = state.board.map(row => row.map(p => p ? { ...p } : null));
+    capturedPieces[SENTE] = state.captured[SENTE].map(p => ({ ...p }));
+    capturedPieces[GOTE] = state.captured[GOTE].map(p => ({ ...p }));
+  }
+
+  function applyMove(move, real = false) {
+    if (move.drop) {
+      // 持ち駒から削除
+      const list = capturedPieces[move.owner];
+      const idx = list.findIndex(p => p.type === move.dropType);
+      if (idx >= 0) list.splice(idx, 1);
+      place(move.to.x, move.to.y, move.owner, move.dropType, false);
+      if (real) showMoveBanner(formatMoveName(move));
+      return;
     }
-    if (move.promote) {
-      const newType = PROMOTE_MAP[p.type] || p.type;
-      nb[move.to.y][move.to.x] = { side: p.side, type: newType, promoted: true };
-    } else {
-      nb[move.to.y][move.to.x] = { side: p.side, type: p.type, promoted: p.promoted };
+
+    const fromPiece = board[move.from.y][move.from.x];
+    const target = board[move.to.y][move.to.x];
+    if (target) {
+      capturePiece(target, fromPiece.owner);
     }
+    board[move.from.y][move.from.x] = null;
+    const newPiece = { ...fromPiece };
+    if (move.promote) newPiece.promoted = true;
+    place(move.to.x, move.to.y, newPiece.owner, newPiece.type, newPiece.promoted);
+    if (real) showMoveBanner(formatMoveName(move));
   }
-  return { board: nb, captured: nc };
-}
 
-function evaluateBoard(b, capState) {
-  let score = 0;
-  for (let y = 0; y < 9; y++) {
-    for (let x = 0; x < 9; x++) {
-      const p = b[y][x];
-      if (!p) continue;
-      const v = PIECE_VALUE[p.type] || 0;
-      score += p.side === "b" ? v : -v;
-    }
-  }
-  for (const t of capState.b) score += PIECE_VALUE[t] || 0;
-  for (const t of capState.w) score -= PIECE_VALUE[t] || 0;
-  return score;
-}
-
-function doMove(move, isHuman) {
-  if (gameOver) return;
-  const beforeBoard = board;
-  const beforeCaptured = { b: [...captured.b], w: [...captured.w] };
-  const res = applyMove(beforeBoard, move, beforeCaptured);
-  board = res.board;
-  captured = res.captured;
-  lastMove = { from: move.from, to: move.to };
-  showMoveToast(move, isHuman ? "先手" : "後手");
-  if (isKingCaptured(beforeBoard, board)) {
-    gameOver = true;
-  }
-  turn = turn === "b" ? "w" : "b";
-  render();
-}
-
-function isKingCaptured(prevBoard, newBoard) {
-  let prevKings = 0, newKings = 0;
-  for (let y = 0; y < 9; y++) {
-    for (let x = 0; x < 9; x++) {
-      const p1 = prevBoard[y][x];
-      const p2 = newBoard[y][x];
-      if (p1 && p1.type === "OU") prevKings++;
-      if (p2 && p2.type === "OU") newKings++;
-    }
-  }
-  return newKings < prevKings;
-}
-
-function aiTurn() {
-  if (gameOver) return;
-  const diff = parseInt(difficultySelect.value, 10);
-  const moves = allMovesForSide(board, "w");
-  if (moves.length === 0) {
-    gameOver = true;
-    render();
-    return;
-  }
-  let chosen;
-  if (diff === 1) {
-    chosen = moves[Math.floor(Math.random() * moves.length)];
-  } else if (diff === 2) {
-    const scored = moves.map(m => {
-      const res = applyMove(board, m, captured);
-      return { m, s: evaluateBoard(res.board, res.captured) };
-    });
-    scored.sort((a, b) => a.s - b.s);
-    const subset = scored.slice(0, Math.max(1, Math.floor(scored.length * 0.5)));
-    chosen = subset[Math.floor(Math.random() * subset.length)].m;
-  } else if (diff === 3) {
-    chosen = bestMoveOnePly("w");
-  } else if (diff === 4) {
-    chosen = bestMoveTwoPly("w");
-  } else {
-    chosen = bestMoveTwoPly("w", true);
-  }
-  if (!chosen) chosen = moves[Math.floor(Math.random() * moves.length)];
-  doMove(chosen, false);
-}
-
-function bestMoveOnePly(side) {
-  const moves = allMovesForSide(board, side);
-  let best = null;
-  let bestScore = side === "b" ? -Infinity : Infinity;
-  for (const m of moves) {
-    const res = applyMove(board, m, captured);
-    const s = evaluateBoard(res.board, res.captured);
-    if (side === "w") {
-      if (s < bestScore) {
-        bestScore = s;
-        best = m;
-      }
-    } else {
-      if (s > bestScore) {
-        bestScore = s;
-        best = m;
-      }
-    }
-  }
-  return best;
-}
-
-function bestMoveTwoPly(side, captureBias = false) {
-  const moves = allMovesForSide(board, side);
-  let best = null;
-  let bestScore = side === "b" ? -Infinity : Infinity;
-  for (const m of moves) {
-    const res = applyMove(board, m, captured);
-    const opp = side === "b" ? "w" : "b";
-    const oppMoves = allMovesForSide(res.board, opp);
-    let worstForSide;
-    if (oppMoves.length === 0) {
-      worstForSide = evaluateBoard(res.board, res.captured);
-    } else {
-      let oppBest = opp === "b" ? -Infinity : Infinity;
-      for (const om of oppMoves) {
-        const res2 = applyMove(res.board, om, res.captured);
-        const s2 = evaluateBoard(res2.board, res2.captured);
-        if (opp === "b") {
-          if (s2 > oppBest) oppBest = s2;
-        } else {
-          if (s2 < oppBest) oppBest = s2;
+  function findKing(owner) {
+    for (let y = 0; y < 9; y++) {
+      for (let x = 0; x < 9; x++) {
+        const p = board[y][x];
+        if (p && p.owner === owner && p.type === "OU") {
+          return { x, y };
         }
       }
-      worstForSide = oppBest;
     }
-    let finalScore = worstForSide;
-    if (captureBias && !m.drop) {
-      const target = board[m.to.y][m.to.x];
-      if (target && target.side !== side) {
-        finalScore += side === "b" ? 0.5 : -0.5;
-      }
-    }
-    if (side === "w") {
-      if (finalScore < bestScore) {
-        bestScore = finalScore;
-        best = m;
-      }
-    } else {
-      if (finalScore > bestScore) {
-        bestScore = finalScore;
-        best = m;
-      }
-    }
-  }
-  return best;
-}
-
-function showMoveToast(move, who) {
-  const text = formatMoveName(move, who);
-  moveToast.textContent = text;
-  moveToast.classList.add("show");
-  setTimeout(() => {
-    moveToast.classList.remove("show");
-  }, 2200);
-}
-
-function formatMoveName(move, who) {
-  const sideLabel = who;
-  if (move.drop) {
-    const file = 9 - move.to.x;
-    const rank = move.to.y + 1;
-    return `${sideLabel} 打ち：${PIECE_NAMES[move.type]} (${file}${rank})`;
-  } else {
-    const p = board[move.to.y][move.to.x];
-    const type = p ? PIECE_NAMES[p.type] : "";
-    const fromFile = 9 - move.from.x;
-    const fromRank = move.from.y + 1;
-    const toFile = 9 - move.to.x;
-    const toRank = move.to.y + 1;
-    const prom = move.promote ? " 成" : "";
-    return `${sideLabel}：${type} ${fromFile}${fromRank}→${toFile}${toRank}${prom}`;
-  }
-}
-
-function updateHintForSelected() {
-  if (!hintToggle.checked || !selected || selected.drop) {
-    hintOverlay.style.display = "none";
-    return;
-  }
-  const p = board[selected.y][selected.x];
-  if (!p) {
-    hintOverlay.style.display = "none";
-    return;
-  }
-  const dirs = {
-    nw: "", n: "", ne: "",
-    w: "", c: "", e: "",
-    sw: "", s: "", se: ""
-  };
-  const moves = generateMovesFrom(selected.x, selected.y, board, p.side);
-  const dxdyToDir = (dx, dy) => {
-    if (dy < 0 && dx === 0) return "n";
-    if (dy > 0 && dx === 0) return "s";
-    if (dx < 0 && dy === 0) return "w";
-    if (dx > 0 && dy === 0) return "e";
-    if (dx < 0 && dy < 0) return "nw";
-    if (dx > 0 && dy < 0) return "ne";
-    if (dx < 0 && dy > 0) return "sw";
-    if (dx > 0 && dy > 0) return "se";
     return null;
-  };
-  for (const m of moves) {
-    const dx = m.x - selected.x;
-    const dy = m.y - selected.y;
-    const dirKey = dxdyToDir(dx, dy);
-    if (!dirKey) continue;
-    if (!dirs[dirKey]) {
-      if (dirKey === "n") dirs[dirKey] = "↑";
-      if (dirKey === "s") dirs[dirKey] = "↓";
-      if (dirKey === "w") dirs[dirKey] = "←";
-      if (dirKey === "e") dirs[dirKey] = "→";
-      if (dirKey === "nw") dirs[dirKey] = "↖";
-      if (dirKey === "ne") dirs[dirKey] = "↗";
-      if (dirKey === "sw") dirs[dirKey] = "↙";
-      if (dirKey === "se") dirs[dirKey] = "↘";
+  }
+
+  function isSquareAttacked(owner, x, y) {
+    const enemy = owner === SENTE ? GOTE : SENTE;
+    const moves = generateAllMoves(enemy);
+    return moves.some(m => !m.drop && m.to.x === x && m.to.y === y);
+  }
+
+  function leavesKingInCheck(owner, move) {
+    const state = cloneBoardState();
+    applyMove(move, false);
+    const king = findKing(owner);
+    let inCheck = false;
+    if (king) {
+      inCheck = isSquareAttacked(owner, king.x, king.y);
+    }
+    restoreBoardState(state);
+    return inCheck;
+  }
+
+  // AI
+  function evaluate(owner) {
+    let score = 0;
+    for (let y = 0; y < 9; y++) {
+      for (let x = 0; x < 9; x++) {
+        const p = board[y][x];
+        if (!p) continue;
+        const base = PIECES[p.type].value + (p.promoted ? 2 : 0);
+        score += (p.owner === owner ? base : -base);
+      }
+    }
+    capturedPieces[owner].forEach(p => score += PIECES[p.type].value);
+    const enemy = owner === SENTE ? GOTE : SENTE;
+    capturedPieces[enemy].forEach(p => score -= PIECES[p.type].value);
+    return score;
+  }
+
+  function aiMove() {
+    const owner = turn;
+    const diff = parseInt(difficultyEl.value, 10);
+    const depth = diff <= 2 ? 1 : diff <= 4 ? 2 : 3;
+    const moves = generateAllMoves(owner);
+    if (!moves.length) return;
+
+    let bestScore = -Infinity;
+    let bestMoves = [];
+
+    for (const move of moves) {
+      const state = cloneBoardState();
+      applyMove(move, false);
+      const score = -negamax(enemyOf(owner), depth - 1, -Infinity, Infinity, owner);
+      restoreBoardState(state);
+
+      if (score > bestScore - 0.01) {
+        if (score > bestScore + 0.01) {
+          bestScore = score;
+          bestMoves = [move];
+        } else {
+          bestMoves.push(move);
+        }
+      }
+    }
+
+    // 難易度によるランダム性
+    let chosen;
+    if (diff === 1) {
+      chosen = moves[Math.floor(Math.random() * moves.length)];
+    } else if (diff === 2) {
+      const pool = bestMoves.concat(moves).slice(0, Math.min(moves.length, 10));
+      chosen = pool[Math.floor(Math.random() * pool.length)];
+    } else {
+      chosen = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+    }
+
+    applyMove(chosen, true);
+    render();
+    nextTurn();
+  }
+
+  function negamax(player, depth, alpha, beta, evalFor) {
+    if (depth === 0) {
+      return evaluate(evalFor);
+    }
+    const moves = generateAllMoves(player);
+    if (!moves.length) {
+      return -9999;
+    }
+    let best = -Infinity;
+    for (const move of moves) {
+      const state = cloneBoardState();
+      applyMove(move, false);
+      const score = -negamax(enemyOf(player), depth - 1, -beta, -alpha, evalFor);
+      restoreBoardState(state);
+      if (score > best) best = score;
+      if (score > alpha) alpha = score;
+      if (alpha >= beta) break;
+    }
+    return best;
+  }
+
+  function enemyOf(owner) {
+    return owner === SENTE ? GOTE : SENTE;
+  }
+
+  function nextTurn() {
+    turn = enemyOf(turn);
+    selected = null;
+    selectedDrop = null;
+    legalMoves = [];
+    render();
+
+    const moves = generateAllMoves(turn);
+    if (!moves.length) {
+      statusEl.textContent = (turn === SENTE ? "先手" : "後手") + "の負け";
+      return;
+    }
+
+    if (turn === GOTE) {
+      setTimeout(aiMove, 300);
     }
   }
-  hintOverlay.style.display = "block";
-  hintOverlay.querySelectorAll(".hint-cell").forEach(cell => {
-    const key = cell.dataset.dir;
-    if (key === "c") {
-      cell.textContent = PIECE_NAMES[p.type] || p.type;
+
+  function formatMoveName(move) {
+    if (move.drop) {
+      const file = 9 - move.to.x;
+      const rank = move.to.y + 1;
+      const side = move.owner === SENTE ? "先手" : "後手";
+      return `${side} 打ち: ${PIECES[move.dropType].name} ${file}${rank}`;
     } else {
-      cell.textContent = dirs[key] || "";
+      const fromFile = 9 - move.from.x;
+      const fromRank = move.from.y + 1;
+      const toFile = 9 - move.to.x;
+      const toRank = move.to.y + 1;
+      const side = board[move.to.y][move.to.x].owner === SENTE ? "先手" : "後手";
+      const pieceName = displayPieceName(board[move.to.y][move.to.x]);
+      const prom = move.promote ? " 成" : "";
+      return `${side} ${pieceName} ${fromFile}${fromRank}→${toFile}${toRank}${prom}`;
     }
+  }
+
+  function showMoveBanner(text) {
+    if (bannerTimeout) {
+      clearTimeout(bannerTimeout);
+      bannerTimeout = null;
+    }
+    moveBanner.textContent = text;
+    moveBanner.classList.add("show");
+    bannerTimeout = setTimeout(() => {
+      moveBanner.classList.remove("show");
+    }, 2500);
+  }
+
+  // イベント
+  dirToggleEl.addEventListener("change", () => {
+    showDirections = dirToggleEl.checked;
+    render();
   });
-}
 
-hintToggle.addEventListener("change", () => {
-  updateHintForSelected();
-});
+  resetBtn.addEventListener("click", () => {
+    initGame();
+  });
 
-createBoardUI();
-initBoard();
+  function initGame() {
+    initBoard();
+    resetCaptured();
+    turn = SENTE;
+    selected = null;
+    selectedDrop = null;
+    legalMoves = [];
+    render();
+  }
+
+  // 初期化
+  initGame();
 </script>
 </body>
 </html>
