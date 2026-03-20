@@ -595,16 +595,29 @@
     const piece = board[fromY][fromX];
     const target = board[toY][toX];
 
-    if(target){
-      if(target.owner === 'P'){
-        playerCaptured.push({owner:'P', type: demoteType(target.type), promoted:false});
-      } else {
-        aiCaptured.push({owner:'E', type: demoteType(target.type), promoted:false});
-      }
-      if(target.type==='OU' || target.type==='GY'){
-        endGame(owner==='P' ? 'win' : 'lose');
-      }
-    }
+    if (target) {
+  const baseType = demoteType(target.type);
+
+  if (owner === 'P') {
+    playerCaptured.push({
+      owner: 'P',
+      type: baseType,
+      promoted: false
+    });
+  } else {
+    aiCaptured.push({
+      owner: 'E',
+      type: baseType,
+      promoted: false
+    });
+  }
+
+  // 王 or 玉 を取ったら終了
+  if (target.type === 'OU' || target.type === 'GY') {
+    endGame(owner === 'P' ? 'win' : 'lose');
+  }
+}
+
 
     board[toY][toX] = piece;
     board[fromY][fromX] = null;
@@ -615,30 +628,34 @@
     showMoveBanner("あなた: " + moveName);
   }
 
-  function doDropMove(owner, type, x,y, index){
-    if(owner==='P'){
-      const p = playerCaptured.splice(index,1)[0];
-      board[y][x] = {owner:'P', type:p.type, promoted:false};
-      showMoveBanner("あなた: " + describeDrop(p.type, x,y));
-    } else {
-      const p = aiCaptured.splice(index,1)[0];
-      board[y][x] = {owner:'E', type:p.type, promoted:false};
-      showMoveBanner("相手: " + describeDrop(p.type, x,y));
-    }
+  function doDropMove(owner, type, x, y, index){
+  if(owner === 'P'){
+    const p = playerCaptured.splice(index, 1)[0];
+    board[y][x] = { owner:'P', type: p.type, promoted:false };
+    showMoveBanner("あなた: " + describeDrop(p.type, x, y));
+  } else {
+    const p = aiCaptured.splice(index, 1)[0];
+    board[y][x] = { owner:'E', type: p.type, promoted:false };
+    showMoveBanner("相手: " + describeDrop(p.type, x, y));
   }
+}
+
 
   function demoteType(type){
-    if(['FU','KY','KE','GI','KA','HI','KI','OU','GY'].includes(type)) return type;
-    switch(type){
-      case 'TO': return 'FU';
-      case 'NY': return 'KY';
-      case 'NK': return 'KE';
-      case 'NG': return 'GI';
-      case 'UM': return 'KA';
-      case 'RY': return 'HI';
-    }
-    return type;
+  switch(type){
+    case 'FU': case 'TO': return 'FU';
+    case 'KY': case 'NY': return 'KY';
+    case 'KE': case 'NK': return 'KE';
+    case 'GI': case 'NG': return 'GI';
+    case 'KA': case 'UM': return 'KA';
+    case 'HI': case 'RY': return 'HI';
+    case 'KI': return 'KI';
+    case 'OU': return 'OU';
+    case 'GY': return 'GY';
   }
+  return type;
+}
+
 
   function describeMove(piece, fx,fy,tx,ty,capture){
     const names = {
