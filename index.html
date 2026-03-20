@@ -245,13 +245,13 @@ function initBoard() {
   place(0,0,GOTE,"KY"); place(0,1,GOTE,"KE"); place(0,2,GOTE,"GI");
   place(0,3,GOTE,"KI"); place(0,4,GOTE,"OU"); place(0,5,GOTE,"KI");
   place(0,6,GOTE,"GI"); place(0,7,GOTE,"KE"); place(0,8,GOTE,"KY");
-  place(1,1,GOTE,"KA"); place(1,7,GOTE,"HI");
+  place(1,7,GOTE,"KA"); place(1,1,GOTE,"HI");
   for(let c=0;c<9;c++) place(2,c,GOTE,"FU");
   // 先手
   place(8,0,SENTE,"KY"); place(8,1,SENTE,"KE"); place(8,2,SENTE,"GI");
   place(8,3,SENTE,"KI"); place(8,4,SENTE,"OU"); place(8,5,SENTE,"KI");
   place(8,6,SENTE,"GI"); place(8,7,SENTE,"KE"); place(8,8,SENTE,"KY");
-  place(7,1,SENTE,"HI"); place(7,7,SENTE,"KA");
+  place(7,7,SENTE,"HI"); place(7,1,SENTE,"KA");
   for(let c=0;c<9;c++) place(6,c,SENTE,"FU");
 
   hands[SENTE] = {};
