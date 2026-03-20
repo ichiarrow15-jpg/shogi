@@ -725,51 +725,6 @@
         }
       }
     }
-    // --- 守り評価（ディフェンス強化） ---
-if (diff >= 2) {
-  const kingPos = findKing('E');
-  if (kingPos) {
-    // 王に近づく手は危険なのでマイナス
-    const distBefore = Math.abs(kingPos.x - (m.type==='move'?m.fromX:kingPos.x)) +
-                       Math.abs(kingPos.y - (m.type==='move'?m.fromY:kingPos.y));
-    const distAfter  = Math.abs(kingPos.x - m.toX) +
-                       Math.abs(kingPos.y - m.toY);
-
-    // 王が安全になるならプラス
-    if (distAfter > distBefore) score += 1.5;
-  }
-}
-
-// 味方の駒が取られそうなら守る
-if (diff >= 3) {
-  for (let yy = 0; yy < 9; yy++) {
-    for (let xx = 0; xx < 9; xx++) {
-      const ally = board[yy][xx];
-      if (!ally || ally.owner !== 'E') continue;
-
-      // 相手の利きに入っているかチェック
-      const threats = getLegalMovesForPiece(xx, yy, 'P');
-      if (threats.length > 0) {
-        // その駒を守る動きなら高評価
-        if (m.toX === xx && m.toY === yy) score += 3;
-        // 逃がす動きなら高評価
-        if (m.type === 'move' && m.fromX === xx && m.fromY === yy) score += 4;
-      }
-    }
-  }
-}
-
-// 相手の攻め駒を消す（受け）
-if (diff >= 4) {
-  const target = board[m.toY]?.[m.toX];
-  if (target && target.owner === 'P') {
-    // 攻め駒（飛・角・銀・桂）を取るのは守りとしても強い
-    if (['HI','KA','GI','KE'].includes(target.type)) {
-      score += 6;
-    }
-  }
-}
-
     // 打つ手
     aiCaptured.forEach((p,idx)=>{
       const drops = getDropMoves('E', p.type);
