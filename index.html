@@ -3,920 +3,756 @@
 <head>
 <meta charset="UTF-8">
 <title>シンプル将棋</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  :root {
-    --board-bg: #f4e2b8;
-    --board-line: #b58b4c;
-    --cell-size: min(9vw, 42px);
-    --highlight: rgba(80,160,255,0.4);
-    --last-move: rgba(255,230,120,0.6);
-    --piece-black: #222;
-    --piece-white: #b02020;
+  :root{
+    --board-size: min(90vw, 90vh);
+    --cell-border:#333;
+    --cell-light:#f5e4c3;
+    --cell-dark:#e0c89f;
+    --highlight:#ffe066;
+    --select:#88c0ff;
+    --bg:#222;
+    --panel-bg:#111;
+    --text:#f5f5f5;
+    --accent:#ffb347;
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #f5f5f5;
-    display: flex;
-    justify-content: center;
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    padding:10px;
   }
-  .game-wrapper {
-    width: 100%;
-    max-width: 520px;
-    padding: 8px;
+  .wrapper{
+    width:100%;
+    max-width:900px;
   }
-  .top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-    gap: 6px;
-    flex-wrap: wrap;
+  .top-bar{
+    position:relative;
+    margin-bottom:8px;
   }
-  .top-bar select,
-  .top-bar label {
-    font-size: 12px;
+  .move-banner{
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
+    top:0;
+    background:rgba(0,0,0,0.85);
+    color:#fff;
+    padding:6px 14px;
+    border-radius:999px;
+    font-size:14px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s, transform .2s;
+    z-index:20;
   }
-  .top-bar select {
-    padding: 2px 4px;
+  .move-banner.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(4px);
   }
-  .toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
+  .controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+    padding:6px 8px;
+    background:var(--panel-bg);
+    border-radius:8px;
+    font-size:14px;
   }
-  .board-container {
-    position: relative;
-    background: #d8c08a;
-    padding: 6px;
-    border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  .controls label{display:flex;align-items:center;gap:4px;}
+  select,input[type=checkbox]{
+    background:#222;
+    color:var(--text);
+    border:1px solid #555;
+    border-radius:4px;
+    padding:2px 6px;
+    font-size:14px;
   }
-  .board {
-    display: grid;
-    grid-template-columns: repeat(9, var(--cell-size));
-    grid-template-rows: repeat(9, var(--cell-size));
-    border: 2px solid var(--board-line);
-    background: var(--board-bg);
-    touch-action: manipulation;
+  .status{
+    margin-left:auto;
+    font-size:13px;
+    opacity:.8;
   }
-  .cell {
-    border: 1px solid var(--board-line);
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(var(--cell-size) * 0.6);
-    user-select: none;
+  .board-area{
+    margin-top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:center;
   }
-  .cell.highlight-move {
-    background: var(--highlight);
+  .board{
+    width:var(--board-size);
+    height:var(--board-size);
+    display:grid;
+    grid-template-columns:repeat(9,1fr);
+    grid-template-rows:repeat(9,1fr);
+    border:3px solid var(--cell-border);
+    background:#c9a96a;
+    position:relative;
   }
-  .cell.last-move {
-    box-shadow: inset 0 0 0 3px var(--last-move);
+  .cell{
+    border:1px solid var(--cell-border);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    position:relative;
+    font-size:calc(var(--board-size)/13);
+    user-select:none;
+    touch-action:manipulation;
   }
-  .piece {
-    width: 80%;
-    height: 80%;
-    border-radius: 4px;
-    background: #fdf5dd;
-    border: 1px solid #b58b4c;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    letter-spacing: 0.05em;
+  .cell:nth-child(odd){background:var(--cell-light);}
+  .cell:nth-child(even){background:var(--cell-dark);}
+  .cell.highlight{background:var(--highlight);}
+  .cell.selected{outline:3px solid var(--select);}
+  .piece{
+    width:80%;
+    height:80%;
+    border-radius:6px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-weight:700;
+    letter-spacing:0.05em;
+    background:#fdf5d0;
+    color:#000;
+    box-shadow:0 1px 2px rgba(0,0,0,0.5);
+    transform:rotate(0deg);
   }
-  .piece.black {
-    color: var(--piece-black);
+  .piece.gote{transform:rotate(180deg);}
+  .piece.sente-king{background:#ffe0e0;}
+  .piece.gote-king{background:#e0e8ff;}
+  .piece.promoted{background:#f7c4c4;}
+  .hands{
+    display:flex;
+    justify-content:space-between;
+    width:var(--board-size);
+    font-size:13px;
   }
-  .piece.white {
-    color: var(--piece-white);
-    transform: rotate(180deg);
+  .hand{
+    flex:1;
+    display:flex;
+    flex-wrap:wrap;
+    gap:4px;
+    padding:4px;
+    background:var(--panel-bg);
+    border-radius:6px;
+    min-height:40px;
   }
-  .piece.selected {
-    outline: 2px solid #0078ff;
+  .hand-title{
+    width:100%;
+    font-size:12px;
+    opacity:.8;
+    margin-bottom:2px;
   }
-  .hands {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 6px;
-    gap: 6px;
-    flex-wrap: wrap;
+  .hand-piece{
+    padding:2px 4px;
+    border-radius:4px;
+    border:1px solid #555;
+    background:#222;
+    cursor:pointer;
   }
-  .hand {
-    flex: 1;
-    min-width: 0;
-    background: #fff;
-    border-radius: 4px;
-    padding: 4px;
-    border: 1px solid #ccc;
+  .hand-piece.selected{
+    border-color:var(--accent);
+    box-shadow:0 0 0 2px rgba(255,179,71,0.6);
   }
-  .hand-title {
-    font-size: 11px;
-    margin-bottom: 2px;
-    text-align: center;
+  .result-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.8);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:50;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .3s;
   }
-  .hand-pieces {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-    justify-content: center;
+  .result-overlay.show{
+    opacity:1;
+    pointer-events:auto;
   }
-  .hand-piece {
-    width: 24px;
-    height: 24px;
-    border-radius: 3px;
-    background: #fdf5dd;
-    border: 1px solid #b58b4c;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--piece-black);
+  .result-box{
+    text-align:center;
+    color:#fff;
+    padding:20px 30px;
+    border-radius:12px;
+    background:linear-gradient(135deg,#222,#444);
+    box-shadow:0 0 30px rgba(0,0,0,0.7);
   }
-  .hand-piece.selected {
-    outline: 2px solid #0078ff;
+  .result-box h1{
+    font-size:32px;
+    margin-bottom:10px;
   }
-  .status-bar {
-    margin-top: 6px;
-    font-size: 12px;
-    display: flex;
-    justify-content: space-between;
-    gap: 6px;
-    flex-wrap: wrap;
+  .result-box p{
+    margin-bottom:16px;
   }
-  .status-bar span {
-    white-space: nowrap;
+  .result-box button{
+    padding:6px 16px;
+    border-radius:999px;
+    border:none;
+    background:var(--accent);
+    color:#000;
+    font-weight:600;
+    cursor:pointer;
   }
-  .move-banner {
-    position: fixed;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.8);
-    color: #fff;
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-size: 13px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s ease;
-    z-index: 9999;
-  }
-  .move-banner.show {
-    opacity: 1;
-  }
-  .result-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.65);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9998;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-  }
-  .result-overlay.show {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  .result-box {
-    background: #fff;
-    padding: 18px 22px;
-    border-radius: 10px;
-    text-align: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    animation: pop 0.35s ease;
-  }
-  .result-title {
-    font-size: 20px;
-    margin-bottom: 6px;
-  }
-  .result-sub {
-    font-size: 13px;
-    margin-bottom: 12px;
-  }
-  .result-box button {
-    padding: 6px 14px;
-    font-size: 13px;
-    border-radius: 999px;
-    border: none;
-    background: #0078ff;
-    color: #fff;
-  }
-  @keyframes pop {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-  }
-  @media (max-width: 480px) {
-    :root {
-      --cell-size: min(10vw, 40px);
-    }
-    .hand-piece {
-      width: 22px;
-      height: 22px;
-      font-size: 12px;
-    }
+  @media (max-width:600px){
+    .controls{font-size:12px;}
+    .status{display:block;width:100%;margin-left:0;margin-top:4px;text-align:right;}
   }
 </style>
 </head>
 <body>
-<div class="game-wrapper">
+<div class="wrapper">
   <div class="top-bar">
-    <label>
-      難易度：
-      <select id="difficulty">
-        <option value="1">1（やさしい）</option>
-        <option value="2">2</option>
-        <option value="3" selected>3</option>
-        <option value="4">4</option>
-        <option value="5">5（むずかしい）</option>
-      </select>
-    </label>
-    <label class="toggle-label">
-      <input type="checkbox" id="showMoves" checked>
-      駒のいける方向
-    </label>
-  </div>
-
-  <div class="board-container">
-    <div id="board" class="board"></div>
-  </div>
-
-  <div class="hands">
-    <div class="hand" id="blackHand">
-      <div class="hand-title">先手の持ち駒</div>
-      <div class="hand-pieces" id="blackHandPieces"></div>
-    </div>
-    <div class="hand" id="whiteHand">
-      <div class="hand-title">後手の持ち駒</div>
-      <div class="hand-pieces" id="whiteHandPieces"></div>
+    <div class="move-banner" id="moveBanner"></div>
+    <div class="controls">
+      <label>難易度
+        <select id="difficulty">
+          <option value="1">1（やさしい）</option>
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5（つよい）</option>
+        </select>
+      </label>
+      <label>
+        <input type="checkbox" id="showMoves" checked> 駒のいける方向
+      </label>
+      <div class="status" id="statusText">あなたの手番</div>
     </div>
   </div>
 
-  <div class="status-bar">
-    <span id="turnInfo">先手番</span>
-    <span id="infoText"></span>
+  <div class="board-area">
+    <div class="hands">
+      <div class="hand" id="goteHand">
+        <div class="hand-title">後手の持ち駒</div>
+      </div>
+      <div class="hand" id="senteHand">
+        <div class="hand-title">先手の持ち駒</div>
+      </div>
+    </div>
+    <div class="board" id="board"></div>
   </div>
-</div>
 
-<div id="moveBanner" class="move-banner"></div>
-
-<div id="resultOverlay" class="result-overlay">
-  <div class="result-box">
-    <div id="resultTitle" class="result-title"></div>
-    <div id="resultSub" class="result-sub"></div>
-    <button id="restartBtn">もう一度</button>
+  <div class="result-overlay" id="resultOverlay">
+    <div class="result-box">
+      <h1 id="resultTitle"></h1>
+      <p id="resultMessage"></p>
+      <button id="restartBtn">もう一度</button>
+    </div>
   </div>
 </div>
 
 <script>
-  // 盤は [row][col] 0〜8, 先手(下) = "b", 後手(上) = "w"
-  const PIECES = {
-    FU: '歩', KY: '香', KE: '桂', GI: '銀', KI: '金',
-    KA: '角', HI: '飛', OU: '王', GY: '玉'
+const boardEl = document.getElementById('board');
+const showMovesEl = document.getElementById('showMoves');
+const difficultyEl = document.getElementById('difficulty');
+const statusText = document.getElementById('statusText');
+const moveBanner = document.getElementById('moveBanner');
+const resultOverlay = document.getElementById('resultOverlay');
+const resultTitle = document.getElementById('resultTitle');
+const resultMessage = document.getElementById('resultMessage');
+const restartBtn = document.getElementById('restartBtn');
+const senteHandEl = document.getElementById('senteHand');
+const goteHandEl = document.getElementById('goteHand');
+
+const SENTE = 's';
+const GOTE = 'g';
+
+const pieceDefs = {
+  P:{name:'歩', jp:'歩'},
+  L:{name:'香', jp:'香'},
+  N:{name:'桂', jp:'桂'},
+  S:{name:'銀', jp:'銀'},
+  G:{name:'金', jp:'金'},
+  B:{name:'角', jp:'角'},
+  R:{name:'飛', jp:'飛'},
+  K:{name:'王', jp:'王'},
+  k:{name:'玉', jp:'玉'},
+  '+P':{name:'と', jp:'と'},
+  '+L':{name:'成香', jp:'成香'},
+  '+N':{name:'成桂', jp:'成桂'},
+  '+S':{name:'成銀', jp:'成銀'},
+  '+B':{name:'馬', jp:'馬'},
+  '+R':{name:'竜', jp:'竜'}
+};
+
+let board = [];
+let hands = {
+  [SENTE]:{},
+  [GOTE]:{}
+};
+let currentTurn = SENTE;
+let selected = null; // {x,y} or {handSide, piece}
+let legalMoves = [];
+let gameOver = false;
+
+function initBoard(){
+  board = Array.from({length:9},()=>Array(9).fill(null));
+  // 後手側（上）
+  board[0] = [
+    {side:GOTE,type:'L'},{side:GOTE,type:'N'},{side:GOTE,type:'S'},
+    {side:GOTE,type:'G'},{side:GOTE,type:'k'},{side:GOTE,type:'G'},
+    {side:GOTE,type:'S'},{side:GOTE,type:'N'},{side:GOTE,type:'L'}
+  ];
+  board[1][1] = {side:GOTE,type:'B'}; // 角 左
+  board[1][7] = {side:GOTE,type:'R'}; // 飛 右
+  for(let x=0;x<9;x++) board[2][x] = {side:GOTE,type:'P'};
+  // 先手側（下）
+  board[8] = [
+    {side:SENTE,type:'L'},{side:SENTE,type:'N'},{side:SENTE,type:'S'},
+    {side:SENTE,type:'G'},{side:SENTE,type:'K'},{side:SENTE,type:'G'},
+    {side:SENTE,type:'S'},{side:SENTE,type:'N'},{side:SENTE,type:'L'}
+  ];
+  board[7][7] = {side:SENTE,type:'B'}; // 角 左（先手から見て）
+  board[7][1] = {side:SENTE,type:'R'}; // 飛 右
+  for(let x=0;x<9;x++) board[6][x] = {side:SENTE,type:'P'};
+  hands[SENTE] = {};
+  hands[GOTE] = {};
+  currentTurn = SENTE;
+  selected = null;
+  legalMoves = [];
+  gameOver = false;
+  render();
+  statusText.textContent = 'あなたの手番';
+}
+
+function render(){
+  boardEl.innerHTML = '';
+  for(let y=0;y<9;y++){
+    for(let x=0;x<9;x++){
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.x = x;
+      cell.dataset.y = y;
+      if(selected && selected.x===x && selected.y===y){
+        cell.classList.add('selected');
+      }
+      if(showMovesEl.checked && legalMoves.some(m=>m.to.x===x && m.to.y===y)){
+        cell.classList.add('highlight');
+      }
+      const piece = board[y][x];
+      if(piece){
+        const pEl = document.createElement('div');
+        pEl.className = 'piece ' + (piece.side===SENTE?'sente':'gote');
+        if(piece.type==='K') pEl.classList.add('sente-king');
+        if(piece.type==='k') pEl.classList.add('gote-king');
+        if(piece.type.startsWith('+')) pEl.classList.add('promoted');
+        pEl.textContent = pieceDefs[piece.type].jp;
+        cell.appendChild(pEl);
+      }
+      cell.addEventListener('click',onCellClick);
+      boardEl.appendChild(cell);
+    }
+  }
+  renderHands();
+}
+
+function renderHands(){
+  const makeHandPieces = (side, el)=>{
+    el.querySelectorAll('.hand-piece').forEach(n=>n.remove());
+    const counts = hands[side];
+    Object.keys(counts).forEach(type=>{
+      const count = counts[type];
+      if(count>0){
+        const hp = document.createElement('div');
+        hp.className = 'hand-piece';
+        hp.dataset.side = side;
+        hp.dataset.type = type;
+        hp.textContent = pieceDefs[type].jp + '×' + count;
+        if(selected && selected.handSide===side && selected.type===type){
+          hp.classList.add('selected');
+        }
+        hp.addEventListener('click',onHandPieceClick);
+        el.appendChild(hp);
+      }
+    });
   };
-  const boardEl = document.getElementById('board');
-  const turnInfoEl = document.getElementById('turnInfo');
-  const infoTextEl = document.getElementById('infoText');
-  const showMovesEl = document.getElementById('showMoves');
-  const difficultyEl = document.getElementById('difficulty');
-  const blackHandEl = document.getElementById('blackHandPieces');
-  const whiteHandEl = document.getElementById('whiteHandPieces');
-  const moveBannerEl = document.getElementById('moveBanner');
-  const resultOverlayEl = document.getElementById('resultOverlay');
-  const resultTitleEl = document.getElementById('resultTitle');
-  const resultSubEl = document.getElementById('resultSub');
-  const restartBtn = document.getElementById('restartBtn');
+  makeHandPieces(GOTE,goteHandEl);
+  makeHandPieces(SENTE,senteHandEl);
+}
 
-  let board = [];
-  let turn = 'b'; // 'b' 先手, 'w' 後手(AI)
-  let selected = null; // {type, owner, row, col}
-  let selectedHand = null; // {owner, piece}
-  let showMoves = true;
-  let lastMove = null; // {fromRow, fromCol, toRow, toCol}
-  let blackHand = [];
-  let whiteHand = [];
-  let gameOver = false;
+function onCellClick(e){
+  if(gameOver) return;
+  const x = parseInt(e.currentTarget.dataset.x,10);
+  const y = parseInt(e.currentTarget.dataset.y,10);
+  const piece = board[y][x];
 
-  function initBoard() {
-    board = Array.from({ length: 9 }, () => Array(9).fill(null));
-    // 後手(上)
-    board[0][0] = { type: 'KY', owner: 'w' };
-    board[0][1] = { type: 'KE', owner: 'w' };
-    board[0][2] = { type: 'GI', owner: 'w' };
-    board[0][3] = { type: 'KI', owner: 'w' };
-    board[0][4] = { type: 'GY', owner: 'w' }; // 玉
-    board[0][5] = { type: 'KI', owner: 'w' };
-    board[0][6] = { type: 'GI', owner: 'w' };
-    board[0][7] = { type: 'KE', owner: 'w' };
-    board[0][8] = { type: 'KY', owner: 'w' };
-    board[1][1] = { type: 'HI', owner: 'w' }; // 飛（右）
-    board[1][7] = { type: 'KA', owner: 'w' }; // 角（左）
-    for (let c = 0; c < 9; c++) board[2][c] = { type: 'FU', owner: 'w' };
+  if(selected && selected.fromBoard){
+    const move = legalMoves.find(m=>m.to.x===x && m.to.y===y);
+    if(move){
+      applyMove(move,true);
+      return;
+    }
+  }
+  if(selected && selected.fromHand){
+    const move = legalMoves.find(m=>m.to.x===x && m.to.y===y);
+    if(move){
+      applyMove(move,true);
+      return;
+    }
+  }
 
-    // 先手(下)
-    board[8][0] = { type: 'KY', owner: 'b' };
-    board[8][1] = { type: 'KE', owner: 'b' };
-    board[8][2] = { type: 'GI', owner: 'b' };
-    board[8][3] = { type: 'KI', owner: 'b' };
-    board[8][4] = { type: 'OU', owner: 'b' }; // 王
-    board[8][5] = { type: 'KI', owner: 'b' };
-    board[8][6] = { type: 'GI', owner: 'b' };
-    board[8][7] = { type: 'KE', owner: 'b' };
-    board[8][8] = { type: 'KY', owner: 'b' };
-    board[7][1] = { type: 'KA', owner: 'b' }; // 角（左）
-    board[7][7] = { type: 'HI', owner: 'b' }; // 飛（右）
-    for (let c = 0; c < 9; c++) board[6][c] = { type: 'FU', owner: 'b' };
-
-    blackHand = [];
-    whiteHand = [];
+  if(piece && piece.side===currentTurn){
+    selected = {fromBoard:true,x,y};
+    legalMoves = generateMovesForPiece(x,y,currentTurn);
+  }else{
     selected = null;
-    selectedHand = null;
-    lastMove = null;
-    gameOver = false;
-    turn = 'b';
-    updateUI();
+    legalMoves = [];
   }
+  render();
+}
 
-  function createBoardUI() {
-    boardEl.innerHTML = '';
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.dataset.row = r;
-        cell.dataset.col = c;
-        cell.addEventListener('click', () => onCellClick(r, c));
-        boardEl.appendChild(cell);
-      }
-    }
+function onHandPieceClick(e){
+  if(gameOver) return;
+  const side = e.currentTarget.dataset.side;
+  const type = e.currentTarget.dataset.type;
+  if(side!==currentTurn) return;
+  if(selected && selected.fromHand && selected.type===type && selected.handSide===side){
+    selected = null;
+    legalMoves = [];
+  }else{
+    selected = {fromHand:true,handSide:side,type};
+    legalMoves = generateDrops(type,side);
   }
+  render();
+}
 
-  function updateUI() {
-    // 盤
-    const cells = boardEl.querySelectorAll('.cell');
-    cells.forEach(cell => {
-      const r = parseInt(cell.dataset.row, 10);
-      const c = parseInt(cell.dataset.col, 10);
-      cell.innerHTML = '';
-      cell.classList.remove('highlight-move', 'last-move');
-      const piece = board[r][c];
-      if (piece) {
-        const div = document.createElement('div');
-        div.className = 'piece ' + (piece.owner === 'b' ? 'black' : 'white');
-        div.textContent = PIECES[piece.type];
-        if (selected && selected.row === r && selected.col === c) {
-          div.classList.add('selected');
-        }
-        cell.appendChild(div);
+function inBounds(x,y){return x>=0 && x<9 && y>=0 && y<9;}
+
+function cloneBoard(b){
+  return b.map(row=>row.map(p=>p?{side:p.side,type:p.type}:null));
+}
+
+function addToHand(side,type){
+  const base = type.startsWith('+')?type.slice(1):type;
+  hands[side][base] = (hands[side][base]||0)+1;
+}
+
+function removeFromHand(side,type){
+  if(hands[side][type]){
+    hands[side][type]--;
+    if(hands[side][type]<=0) delete hands[side][type];
+  }
+}
+
+function isPromotionZone(side,y){
+  return side===SENTE ? y<=2 : y>=6;
+}
+
+function autoPromote(type,side,fromY,toY){
+  const promotable = ['P','L','N','S','B','R'];
+  if(!promotable.includes(type)) return type;
+  if(!isPromotionZone(side,fromY) && !isPromotionZone(side,toY)) return type;
+  // シンプルに自動成り
+  const map = {P:'+P',L:'+L',N:'+N',S:'+S',B:'+B',R:'+R'};
+  return map[type] || type;
+}
+
+function generateMovesForPiece(x,y,side){
+  const piece = board[y][x];
+  if(!piece || piece.side!==side) return [];
+  const type = piece.type;
+  const dir = side===SENTE ? -1 : 1;
+  const moves = [];
+  const addMove = (tx,ty)=>{
+    if(!inBounds(tx,ty)) return false;
+    const target = board[ty][tx];
+    if(target && target.side===side) return false;
+    moves.push({from:{x,y},to:{x:tx,y:ty},capture:target||null,drop:null});
+    return !target;
+  };
+
+  const stepPatterns = {
+    'P':[[0,dir]],
+    '+P':[[0,dir],[0,-dir],[1,0],[-1,0],[1,dir],[-1,dir]],
+    'L':Array.from({length:8},(_,i)=>[0,dir*(i+1)]),
+    '+L':[[0,dir],[0,-dir],[1,0],[-1,0],[1,dir],[-1,dir]],
+    'N':[[1,2*dir],[-1,2*dir]],
+    '+N':[[0,dir],[0,-dir],[1,0],[-1,0],[1,dir],[-1,dir]],
+    'S':[[0,dir],[1,dir],[-1,dir],[1,-dir],[-1,-dir]],
+    '+S':[[0,dir],[0,-dir],[1,0],[-1,0],[1,dir],[-1,dir]],
+    'G':[[0,dir],[0,-dir],[1,0],[-1,0],[1,dir],[-1,dir]],
+    'K':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,1],[1,-1],[-1,-1]],
+    'k':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,1],[1,-1],[-1,-1]]
+  };
+
+  if(type==='B' || type==='+B'){
+    const dirs = [[1,1],[1,-1],[-1,1],[-1,-1]];
+    dirs.forEach(d=>{
+      let tx=x+d[0], ty=y+d[1];
+      while(inBounds(tx,ty)){
+        if(!addMove(tx,ty)) break;
+        tx+=d[0]; ty+=d[1];
       }
     });
-
-    // 最後の手
-    if (lastMove) {
-      const idx1 = lastMove.fromRow * 9 + lastMove.fromCol;
-      const idx2 = lastMove.toRow * 9 + lastMove.toCol;
-      if (cells[idx1]) cells[idx1].classList.add('last-move');
-      if (cells[idx2]) cells[idx2].classList.add('last-move');
-    }
-
-    // ハイライト
-    if (showMoves && selected && !selectedHand) {
-      const moves = generateMovesFor(selected.owner, selected.row, selected.col, true);
-      moves.forEach(m => {
-        const idx = m.toRow * 9 + m.toCol;
-        if (cells[idx]) cells[idx].classList.add('highlight-move');
+    if(type==='+B'){
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(d=>{
+        addMove(x+d[0],y+d[1]);
       });
     }
-    if (showMoves && selectedHand) {
-      const drops = generateDropsFor(selectedHand.owner, selectedHand.piece);
-      drops.forEach(d => {
-        const idx = d.row * 9 + d.col;
-        if (cells[idx]) cells[idx].classList.add('highlight-move');
-      });
-    }
-
-    // 持ち駒
-    renderHands();
-
-    // ターン
-    turnInfoEl.textContent = turn === 'b' ? '先手番' : '後手番（AI）';
-  }
-
-  function renderHands() {
-    blackHandEl.innerHTML = '';
-    whiteHandEl.innerHTML = '';
-    const countPieces = (hand) => {
-      const map = {};
-      hand.forEach(p => {
-        map[p] = (map[p] || 0) + 1;
-      });
-      return map;
-    };
-    const bMap = countPieces(blackHand);
-    const wMap = countPieces(whiteHand);
-    Object.keys(bMap).forEach(type => {
-      const div = document.createElement('div');
-      div.className = 'hand-piece';
-      div.textContent = PIECES[type];
-      if (selectedHand && selectedHand.owner === 'b' && selectedHand.piece === type) {
-        div.classList.add('selected');
+  }else if(type==='R' || type==='+R'){
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    dirs.forEach(d=>{
+      let tx=x+d[0], ty=y+d[1];
+      while(inBounds(tx,ty)){
+        if(!addMove(tx,ty)) break;
+        tx+=d[0]; ty+=d[1];
       }
-      div.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (turn !== 'b' || gameOver) return;
-        if (selectedHand && selectedHand.owner === 'b' && selectedHand.piece === type) {
-          selectedHand = null;
-        } else {
-          selectedHand = { owner: 'b', piece: type };
-          selected = null;
-        }
-        updateUI();
-      });
-      const countSpan = document.createElement('span');
-      countSpan.style.fontSize = '10px';
-      countSpan.textContent = bMap[type] > 1 ? '×' + bMap[type] : '';
-      div.appendChild(countSpan);
-      blackHandEl.appendChild(div);
     });
-    Object.keys(wMap).forEach(type => {
-      const div = document.createElement('div');
-      div.className = 'hand-piece';
-      div.textContent = PIECES[type];
-      if (selectedHand && selectedHand.owner === 'w' && selectedHand.piece === type) {
-        div.classList.add('selected');
-      }
-      div.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (turn !== 'w' || gameOver) return;
-        if (selectedHand && selectedHand.owner === 'w' && selectedHand.piece === type) {
-          selectedHand = null;
-        } else {
-          selectedHand = { owner: 'w', piece: type };
-          selected = null;
-        }
-        updateUI();
+    if(type==='+R'){
+      [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(d=>{
+        addMove(x+d[0],y+d[1]);
       });
-      const countSpan = document.createElement('span');
-      countSpan.style.fontSize = '10px';
-      countSpan.textContent = wMap[type] > 1 ? '×' + wMap[type] : '';
-      div.appendChild(countSpan);
-      whiteHandEl.appendChild(div);
-    });
-  }
-
-  function onCellClick(r, c) {
-    if (gameOver) return;
-    if (turn !== 'b') return; // 人間は先手のみ
-
-    const piece = board[r][c];
-
-    // 持ち駒からの打ち
-    if (selectedHand && !piece) {
-      const drops = generateDropsFor('b', selectedHand.piece);
-      const ok = drops.some(d => d.row === r && d.col === c);
-      if (ok) {
-        makeDrop('b', selectedHand.piece, r, c);
-        selectedHand = null;
-        afterPlayerMove();
-      }
-      return;
     }
-
-    // 自分の駒を選択
-    if (piece && piece.owner === 'b') {
-      if (selected && selected.row === r && selected.col === c) {
-        selected = null;
-      } else {
-        selected = { ...piece, row: r, col: c };
-        selectedHand = null;
-      }
-      updateUI();
-      return;
-    }
-
-    // 移動
-    if (selected && (!piece || piece.owner !== 'b')) {
-      const moves = generateMovesFor('b', selected.row, selected.col, true);
-      const ok = moves.find(m => m.toRow === r && m.toCol === c);
-      if (ok) {
-        makeMove(selected.row, selected.col, r, c);
-        selected = null;
-        afterPlayerMove();
-      }
-    }
-  }
-
-  function afterPlayerMove() {
-    updateUI();
-    const winner = checkWinner();
-    if (winner) {
-      showResult(winner === 'b' ? 'win' : 'lose');
-      return;
-    }
-    turn = 'w';
-    updateUI();
-    setTimeout(aiTurn, 400);
-  }
-
-  function makeMove(fromRow, fromCol, toRow, toCol) {
-    const piece = board[fromRow][fromCol];
-    const target = board[toRow][toCol];
-    if (target) {
-      const capturedType = target.type;
-      const baseType = capturedType; // 成りなし実装
-      if (piece.owner === 'b') {
-        blackHand.push(baseType);
-      } else {
-        whiteHand.push(baseType);
-      }
-    }
-    board[toRow][toCol] = piece;
-    board[fromRow][fromCol] = null;
-    lastMove = { fromRow, fromCol, toRow, toCol };
-  }
-
-  function makeDrop(owner, type, row, col) {
-    board[row][col] = { type, owner };
-    const hand = owner === 'b' ? blackHand : whiteHand;
-    const idx = hand.indexOf(type);
-    if (idx >= 0) hand.splice(idx, 1);
-    lastMove = { fromRow: row, fromCol: col, toRow: row, toCol: col, drop: true };
-  }
-
-  function generateMovesFor(owner, row, col, filterSelfCheck) {
-    const piece = board[row][col];
-    if (!piece || piece.owner !== owner) return [];
-    const type = piece.type;
-    const dir = owner === 'b' ? -1 : 1; // 先手は上向きに-1
-    const moves = [];
-    const add = (r, c) => {
-      if (r < 0 || r > 8 || c < 0 || c > 8) return;
-      const t = board[r][c];
-      if (!t || t.owner !== owner) {
-        moves.push({ fromRow: row, fromCol: col, toRow: r, toCol: c });
-      }
-    };
-    const slide = (dr, dc) => {
-      let r = row + dr;
-      let c = col + dc;
-      while (r >= 0 && r < 9 && c >= 0 && c < 9) {
-        const t = board[r][c];
-        if (!t) {
-          moves.push({ fromRow: row, fromCol: col, toRow: r, toCol: c });
-        } else {
-          if (t.owner !== owner) {
-            moves.push({ fromRow: row, fromCol: col, toRow: r, toCol: c });
-          }
-          break;
-        }
-        r += dr;
-        c += dc;
-      }
-    };
-
-    switch (type) {
-      case 'FU':
-        add(row + dir, col);
-        break;
-      case 'KY':
-        slide(dir, 0);
-        break;
-      case 'KE':
-        add(row + 2 * dir, col - 1);
-        add(row + 2 * dir, col + 1);
-        break;
-      case 'GI':
-        add(row + dir, col - 1);
-        add(row + dir, col);
-        add(row + dir, col + 1);
-        add(row - dir, col - 1);
-        add(row - dir, col + 1);
-        break;
-      case 'KI':
-      case 'OU':
-      case 'GY':
-        const dirs = [
-          [-1, 0], [1, 0], [0, -1], [0, 1],
-          [-1, -1], [-1, 1], [1, -1], [1, 1]
-        ];
-        dirs.forEach(d => {
-          const nr = row + d[0];
-          const nc = col + d[1];
-          if (type === 'KI') {
-            // 金の動き
-            if (owner === 'b' && d[0] === 1 && d[1] !== 0) return;
-            if (owner === 'w' && d[0] === -1 && d[1] !== 0) return;
-          }
-          add(nr, nc);
-        });
-        break;
-      case 'KA':
-        slide(-1, -1);
-        slide(-1, 1);
-        slide(1, -1);
-        slide(1, 1);
-        break;
-      case 'HI':
-        slide(-1, 0);
-        slide(1, 0);
-        slide(0, -1);
-        slide(0, 1);
-        break;
-    }
-
-    if (filterSelfCheck) {
-      return moves.filter(m => !wouldBeInCheck(owner, m));
-    }
-    return moves;
-  }
-
-  function generateDropsFor(owner, type) {
-    const drops = [];
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        if (!board[r][c]) {
-          // 簡易：二歩などの細かいルールは省略
-          drops.push({ row: r, col: c });
-        }
-      }
-    }
-    return drops;
-  }
-
-  function findKing(owner) {
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        const p = board[r][c];
-        if (!p) continue;
-        if (owner === 'b' && p.type === 'OU' && p.owner === 'b') return { r, c };
-        if (owner === 'w' && p.type === 'GY' && p.owner === 'w') return { r, c };
-      }
-    }
-    return null;
-  }
-
-  function wouldBeInCheck(owner, move) {
-    const backup = JSON.parse(JSON.stringify(board));
-    const piece = board[move.fromRow][move.fromCol];
-    const target = board[move.toRow][move.toCol];
-    board[move.toRow][move.toCol] = piece;
-    board[move.fromRow][move.fromCol] = null;
-    const kingPos = findKing(owner);
-    let inCheck = false;
-    const enemy = owner === 'b' ? 'w' : 'b';
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        const p = board[r][c];
-        if (p && p.owner === enemy) {
-          const ms = generateMovesFor(enemy, r, c, false);
-          if (ms.some(m => kingPos && m.toRow === kingPos.r && m.toCol === kingPos.c)) {
-            inCheck = true;
-            break;
-          }
-        }
-      }
-      if (inCheck) break;
-    }
-    board = backup;
-    return inCheck;
-  }
-
-  function checkWinner() {
-    const bKing = findKing('b');
-    const wKing = findKing('w');
-    if (!bKing) return 'w';
-    if (!wKing) return 'b';
-    return null;
-  }
-
-  // AI
-  function aiTurn() {
-    if (gameOver) return;
-    const diff = parseInt(difficultyEl.value, 10);
-    const move = chooseAIMove(diff);
-    if (!move) {
-      showResult('win');
-      return;
-    }
-    if (move.drop) {
-      makeDrop('w', move.type, move.toRow, move.toCol);
-    } else {
-      makeMove(move.fromRow, move.fromCol, move.toRow, move.toCol);
-    }
-    showMoveBanner(formatMoveName(move));
-    updateUI();
-    const winner = checkWinner();
-    if (winner) {
-      showResult(winner === 'b' ? 'win' : 'lose');
-      return;
-    }
-    turn = 'b';
-    updateUI();
-  }
-
-  function chooseAIMove(diff) {
-    const moves = listAllMoves('w');
-    if (moves.length === 0) return null;
-
-    if (diff <= 2) {
-      // ランダム寄り
-      const captureMoves = moves.filter(m => m.capture);
-      const pool = captureMoves.length && diff === 2 ? captureMoves : moves;
-      return pool[Math.floor(Math.random() * pool.length)];
-    }
-
-    // 評価関数
-    const value = { FU: 1, KY: 3, KE: 3, GI: 4, KI: 5, KA: 8, HI: 9, OU: 100, GY: 100 };
-    const evaluate = () => {
-      let score = 0;
-      for (let r = 0; r < 9; r++) {
-        for (let c = 0; c < 9; c++) {
-          const p = board[r][c];
-          if (!p) continue;
-          const v = value[p.type] || 0;
-          score += p.owner === 'w' ? v : -v;
-        }
-      }
-      blackHand.forEach(t => score -= value[t] || 0);
-      whiteHand.forEach(t => score += value[t] || 0);
-      return score;
-    };
-
-    const depth = diff >= 5 ? 3 : 2;
-
-    function minimax(d, maximizing) {
-      const winner = checkWinner();
-      if (winner === 'w') return 9999;
-      if (winner === 'b') return -9999;
-      if (d === 0) return evaluate();
-
-      if (maximizing) {
-        let best = -Infinity;
-        const ms = listAllMoves('w');
-        if (ms.length === 0) return evaluate();
-        for (const m of ms) {
-          const backup = snapshot();
-          applyGenericMove('w', m);
-          const val = minimax(d - 1, false);
-          restore(backup);
-          if (val > best) best = val;
-        }
-        return best;
-      } else {
-        let best = Infinity;
-        const ms = listAllMoves('b');
-        if (ms.length === 0) return evaluate();
-        for (const m of ms) {
-          const backup = snapshot();
-          applyGenericMove('b', m);
-          restore(backup);
-          if (val < best) best = val;
-          var val = minimax(d - 1, true);
-        }
-        return best;
-      }
-    }
-
-    function snapshot() {
-      return {
-        board: JSON.parse(JSON.stringify(board)),
-        blackHand: [...blackHand],
-        whiteHand: [...whiteHand]
-      };
-    }
-    function restore(s) {
-      board = JSON.parse(JSON.stringify(s.board));
-      blackHand = [...s.blackHand];
-      whiteHand = [...s.whiteHand];
-    }
-    function applyGenericMove(owner, m) {
-      if (m.drop) {
-        const hand = owner === 'b' ? blackHand : whiteHand;
-        const idx = hand.indexOf(m.type);
-        if (idx >= 0) hand.splice(idx, 1);
-        board[m.toRow][m.toCol] = { type: m.type, owner };
-      } else {
-        const piece = board[m.fromRow][m.fromCol];
-        const target = board[m.toRow][m.toCol];
-        if (target) {
-          const baseType = target.type;
-          if (owner === 'b') blackHand.push(baseType);
-          else whiteHand.push(baseType);
-        }
-        board[m.toRow][m.toCol] = piece;
-        board[m.fromRow][m.fromCol] = null;
-      }
-    }
-
-    let bestMove = null;
-    let bestScore = -Infinity;
-    const allMoves = moves;
-    for (const m of allMoves) {
-      const backup = snapshot();
-      applyGenericMove('w', m);
-      const score = minimax(depth - 1, false);
-      restore(backup);
-      if (score > bestScore) {
-        bestScore = score;
-        bestMove = m;
-      }
-    }
-    return bestMove || moves[0];
-  }
-
-  function listAllMoves(owner) {
-    const moves = [];
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        const p = board[r][c];
-        if (p && p.owner === owner) {
-          const ms = generateMovesFor(owner, r, c, true);
-          ms.forEach(m => {
-            const target = board[m.toRow][m.toCol];
-            moves.push({
-              ...m,
-              type: p.type,
-              capture: !!target
-            });
-          });
-        }
-      }
-    }
-    const hand = owner === 'b' ? blackHand : whiteHand;
-    const unique = [...new Set(hand)];
-    unique.forEach(t => {
-      const drops = generateDropsFor(owner, t);
-      drops.forEach(d => {
-        moves.push({
-          drop: true,
-          type: t,
-          toRow: d.row,
-          toCol: d.col
-        });
+  }else{
+    const pattern = stepPatterns[type];
+    if(pattern){
+      pattern.forEach(([dx,dy])=>{
+        addMove(x+dx,y+dy);
       });
-    });
-    return moves;
-  }
-
-  function formatMoveName(m) {
-    const file = 9 - m.toCol;
-    const rank = m.toRow + 1;
-    const pieceName = PIECES[m.type] || '';
-    const prefix = '後手：';
-    if (m.drop) {
-      return `${prefix}${file}${rank}${pieceName}打ち`;
-    } else {
-      const fromFile = 9 - m.fromCol;
-      const fromRank = m.fromRow + 1;
-      const capture = board[m.toRow][m.toCol] ? 'x' : '-';
-      return `${prefix}${fromFile}${fromRank}${capture}${file}${rank}${pieceName}`;
     }
   }
 
-  let bannerTimer = null;
-  function showMoveBanner(text) {
-    moveBannerEl.textContent = text;
-    moveBannerEl.classList.add('show');
-    if (bannerTimer) clearTimeout(bannerTimer);
-    bannerTimer = setTimeout(() => {
-      moveBannerEl.classList.remove('show');
-    }, 2000);
-  }
-
-  function showResult(type) {
-    gameOver = true;
-    if (type === 'win') {
-      resultTitleEl.textContent = '勝利！';
-      resultSubEl.textContent = 'お見事です。';
-    } else {
-      resultTitleEl.textContent = '敗北…';
-      resultSubEl.textContent = 'もう一度挑戦してみよう。';
-    }
-    resultOverlayEl.classList.add('show');
-  }
-
-  restartBtn.addEventListener('click', () => {
-    resultOverlayEl.classList.remove('show');
-    initBoard();
+  // 成り処理
+  return moves.map(m=>{
+    const fromY = y;
+    const toY = m.to.y;
+    const newType = autoPromote(type,side,fromY,toY);
+    return {...m, promote:newType!==type, newType};
   });
+}
 
-  showMovesEl.addEventListener('change', () => {
-    showMoves = showMovesEl.checked;
-    updateUI();
-  });
+function generateDrops(type,side){
+  const moves = [];
+  for(let y=0;y<9;y++){
+    for(let x=0;x<9;x++){
+      if(board[y][x]) continue;
+      moves.push({from:null,to:{x,y},capture:null,drop:{side,type},promote:false,newType:type});
+    }
+  }
+  return moves;
+}
 
-  // 初期化
-  createBoardUI();
+function applyMove(move,playerMove){
+  if(gameOver) return;
+  const side = currentTurn;
+  let moveName = '';
+
+  if(move.drop){
+    // 持ち駒から
+    removeFromHand(side,move.drop.type);
+    board[move.to.y][move.to.x] = {side,type:move.drop.type};
+    moveName = `${side===SENTE?'先手':'後手'}: ${pieceDefs[move.drop.type].jp}打ち`;
+  }else{
+    const piece = board[move.from.y][move.from.x];
+    let type = piece.type;
+    if(move.promote) type = move.newType;
+    if(move.capture){
+      addToHand(side,move.capture.type);
+    }
+    board[move.from.y][move.from.x] = null;
+    board[move.to.y][move.to.x] = {side,type};
+    const file = 9-move.to.x;
+    const rank = move.to.y+1;
+    moveName = `${side===SENTE?'先手':'後手'}: ${file}${rank}${pieceDefs[type].jp}`;
+  }
+
+  // 王・玉が取られたかチェック
+  const enemy = side===SENTE?GOTE:SENTE;
+  let enemyKingAlive = false;
+  for(let y=0;y<9;y++){
+    for(let x=0;x<9;x++){
+      const p = board[y][x];
+      if(p && p.side===enemy && (p.type==='K' || p.type==='k')){
+        enemyKingAlive = true;
+      }
+    }
+  }
+  if(!enemyKingAlive){
+    showMoveBanner(moveName);
+    endGame(side===SENTE?'勝ち':'負け');
+    render();
+    return;
+  }
+
+  currentTurn = enemy;
+  selected = null;
+  legalMoves = [];
+  render();
+  showMoveBanner(moveName);
+
+  if(playerMove){
+    statusText.textContent = '相手の手番…';
+    setTimeout(aiMove,400);
+  }else{
+    statusText.textContent = 'あなたの手番';
+  }
+}
+
+function showMoveBanner(text){
+  moveBanner.textContent = text;
+  moveBanner.classList.add('show');
+  setTimeout(()=>moveBanner.classList.remove('show'),2000);
+}
+
+function endGame(result){
+  gameOver = true;
+  resultTitle.textContent = result==='勝ち'?'あなたの勝ち！':'あなたの負け…';
+  resultMessage.textContent = result==='勝ち'?'王を取りました。':'玉を取られてしまいました。';
+  resultOverlay.classList.add('show');
+}
+
+restartBtn.addEventListener('click',()=>{
+  resultOverlay.classList.remove('show');
   initBoard();
+});
+
+function allMoves(side){
+  const moves = [];
+  for(let y=0;y<9;y++){
+    for(let x=0;x<9;x++){
+      const p = board[y][x];
+      if(p && p.side===side){
+        moves.push(...generateMovesForPiece(x,y,side));
+      }
+    }
+  }
+  const handTypes = Object.keys(hands[side]);
+  handTypes.forEach(t=>{
+    if(hands[side][t]>0){
+      moves.push(...generateDrops(t,side));
+    }
+  });
+  return moves;
+}
+
+function evaluateBoard(){
+  const values = {
+    P:1,L:3,N:3,S:4,G:5,B:8,R:9,
+    '+P':5,'+L':5,'+N':5,'+S':5,'+B':10,'+R':11,
+    K:100,k:100
+  };
+  let score = 0;
+  for(let y=0;y<9;y++){
+    for(let x=0;x<9;x++){
+      const p = board[y][x];
+      if(p){
+        const v = values[p.type]||0;
+        score += p.side===SENTE ? v : -v;
+      }
+    }
+  }
+  Object.entries(hands[SENTE]).forEach(([t,c])=>{
+    const v = values[t]||1;
+    score += v*c*0.8;
+  });
+  Object.entries(hands[GOTE]).forEach(([t,c])=>{
+    const v = values[t]||1;
+    score -= v*c*0.8;
+  });
+  return score;
+}
+
+function aiMove(){
+  if(gameOver) return;
+  const side = currentTurn;
+  const diff = parseInt(difficultyEl.value,10);
+  const moves = allMoves(side);
+  if(moves.length===0){
+    endGame('負け');
+    return;
+  }
+
+  let chosen;
+  if(diff===1){
+    chosen = moves[Math.floor(Math.random()*moves.length)];
+  }else{
+    const depth = diff<=2?1:diff<=4?2:3;
+    let bestScore = Infinity;
+    let bestMoves = [];
+    moves.forEach(m=>{
+      const backup = snapshot();
+      applyMove(m,false);
+      const score = minimax(depth-1,true,-Infinity,Infinity);
+      restore(backup);
+      if(score<bestScore-0.01){
+        bestScore = score;
+        bestMoves = [m];
+      }else if(Math.abs(score-bestScore)<0.01){
+        bestMoves.push(m);
+      }
+    });
+    chosen = bestMoves[Math.floor(Math.random()*bestMoves.length)];
+  }
+  applyMove(chosen,false);
+}
+
+function snapshot(){
+  return {
+    board:cloneBoard(board),
+    hands:JSON.parse(JSON.stringify(hands)),
+    currentTurn,
+    gameOver
+  };
+}
+function restore(snap){
+  board = cloneBoard(snap.board);
+  hands = JSON.parse(JSON.stringify(snap.hands));
+  currentTurn = snap.currentTurn;
+  gameOver = snap.gameOver;
+  selected = null;
+  legalMoves = [];
+}
+
+function minimax(depth,maximizing,alpha,beta){
+  if(depth===0 || gameOver){
+    return evaluateBoard();
+  }
+  const side = maximizing?SENTE:GOTE;
+  const moves = allMoves(side);
+  if(moves.length===0) return maximizing?-999:999;
+  if(maximizing){
+    let best = -Infinity;
+    for(const m of moves){
+      const snap = snapshot();
+      applyMove(m,false);
+      const val = minimax(depth-1,false,alpha,beta);
+      restore(snap);
+      best = Math.max(best,val);
+      alpha = Math.max(alpha,val);
+      if(beta<=alpha) break;
+    }
+    return best;
+  }else{
+    let best = Infinity;
+    for(const m of moves){
+      const snap = snapshot();
+      applyMove(m,false);
+      const val = minimax(depth-1,true,alpha,beta);
+      restore(snap);
+      best = Math.min(best,val);
+      beta = Math.min(beta,val);
+      if(beta<=alpha) break;
+    }
+    return best;
+  }
+}
+
+difficultyEl.addEventListener('change',()=>{
+  // 途中変更OK（AI思考の深さだけ変わる）
+});
+
+showMovesEl.addEventListener('change',()=>{
+  render();
+});
+
+initBoard();
 </script>
 </body>
 </html>
