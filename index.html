@@ -503,41 +503,37 @@
     }
   }
 
-function getLegalMovesForPiece(x, y, owner, customBoard = null) {
-    const bd = customBoard || board;
-    const piece = bd[y][x];
-    if (!piece || piece.owner !== owner) return [];
-
+  function getLegalMovesForPiece(x,y,owner){
+    const piece = board[y][x];
+    if(!piece || piece.owner!==owner) return [];
     const moves = [];
-    const dir = owner === 'P' ? -1 : 1;
+    const dir = owner==='P' ? -1 : 1;
 
-    function addStep(dx, dy) {
-        const nx = x + dx, ny = y + dy;
-        if (!inBounds(nx, ny)) return;
-        const target = bd[ny][nx];
-        if (!target || target.owner !== owner) {
-            moves.push({ from: { x, y }, to: { x: nx, y: ny } });
+    function addStep(dx,dy){
+      const nx = x+dx, ny = y+dy;
+      if(!inBounds(nx,ny)) return;
+      const target = board[ny][nx];
+      if(!target || target.owner!==owner){
+        moves.push({from:{x,y}, to:{x:nx,y:ny}});
+      }
+    }
+    function addSlide(dx,dy){
+      let nx = x+dx, ny = y+dy;
+      while(inBounds(nx,ny)){
+        const target = board[ny][nx];
+        if(!target){
+          moves.push({from:{x,y}, to:{x:nx,y:ny}});
+        } else {
+          if(target.owner!==owner){
+            moves.push({from:{x,y}, to:{x:nx,y:ny}});
+          }
+          break;
         }
+        nx+=dx; ny+=dy;
+      }
     }
 
-    function addSlide(dx, dy) {
-        let nx = x + dx, ny = y + dy;
-        while (inBounds(nx, ny)) {
-            const target = bd[ny][nx];
-            if (!target) {
-                moves.push({ from: { x, y }, to: { x: nx, y: ny } });
-            } else {
-                if (target.owner !== owner) {
-                    moves.push({ from: { x, y }, to: { x: nx, y: ny } });
-                }
-                break;
-            }
-            nx += dx; ny += dy;
-        }
-    }
-
-    // ← ここに各駒の動きをそのまま入れる（あなたのコードのままでOK）
-  const t = piece.type;
+    const t = piece.type;
     const promoted = piece.promoted;
 
     if(t==='FU' && !promoted){
@@ -577,56 +573,30 @@ function getLegalMovesForPiece(x, y, owner, customBoard = null) {
     }
 
     return moves;
-}
+  }
 
   function getDropMoves(owner, type){
-  const moves = [];
-
-  for(let y=0;y<9;y++){
-    for(let x=0;x<9;x++){
-      if(board[y][x]) continue;
-
-      // 行き所のない駒
-      if(type === 'FU' && owner==='P' && y===0) continue;
-      if(type === 'FU' && owner==='E' && y===8) continue;
-
-      if(type === 'KY' && owner==='P' && y===0) continue;
-      if(type === 'KY' && owner==='E' && y===8) continue;
-
-      if(type === 'KE' && owner==='P' && y<=1) continue;
-      if(type === 'KE' && owner==='E' && y>=7) continue;
-
-      // 二歩
-      if(type === 'FU' && hasPawnInFile(owner, x)) continue;
-
-      // 打ち歩詰め
-      if(type === 'FU' && isUchifuzume(owner, x, y)) continue;
-      function isUchifuzume(owner, x, y) {
- 　　　 // 歩を打った直後の仮盤面を作る
-  const sim = JSON.parse(JSON.stringify(board));
-  sim[y][x] = { owner, type:'FU', promoted:false };
-
-  // 相手玉の位置
-  const king = findKing(owner === 'P' ? 'E' : 'P', sim);
-  if (!king) return false;
-
-  // 歩が王の前に打たれているか
-  const dir = owner === 'P' ? -1 : 1;
-  if (king.x === x && king.y === y + dir) {
-    // 相手玉が逃げられるかチェック
-    const escapes = getLegalMovesForPiece(king.x, king.y, king.owner, sim);
-    return escapes.length === 0;
-  }
-  return false;
-}
-
-
-      moves.push({to:{x,y}});
+    const moves = [];
+    for(let y=0;y<9;y++){
+      for(let x=0;x<9;x++){
+        if(board[y][x]) continue;
+        if(type==='FU'){
+          if(owner==='P' && y===0) continue;
+          if(owner==='E' && y===8) continue;
+        }
+        if(type==='KY'){
+          if(owner==='P' && y===0) continue;
+          if(owner==='E' && y===8) continue;
+        }
+        if(type==='KE'){
+          if(owner==='P' && y<=1) continue;
+          if(owner==='E' && y>=7) continue;
+        }
+        moves.push({to:{x,y}});
+      }
     }
+    return moves;
   }
-  return moves;
-}
-
 
   function demoteType(type){
     switch(type){
@@ -667,30 +637,6 @@ function getLegalMovesForPiece(x, y, owner, customBoard = null) {
     const moveName = describeMove(piece, fromX, fromY, toX, toY, !!target);
     showMoveBanner("あなた: " + moveName);
   }
-  // 打ち歩詰めチェック（完全安全版）
-function isUchifuzume(owner, x, y) {
-  // 仮盤面を作る
-  const sim = JSON.parse(JSON.stringify(board));
-
-  // 歩を打つ
-  sim[y][x] = { owner, type:'FU', promoted:false };
-
-  // 相手玉の位置
-  const enemy = owner === 'P' ? 'E' : 'P';
-  const king = findKing(enemy, sim);
-  if (!king) return false;
-
-  // 歩が王の前に打たれたか
-  const dir = owner === 'P' ? -1 : 1;
-  if (!(king.x === x && king.y === y + dir)) return false;
-
-  // 相手玉の逃げ道を調べる
-  const escapes = getLegalMovesForPiece(king.x, king.y, enemy, sim);
-
-  // 逃げ道がなければ打ち歩詰め
-  return escapes.length === 0;
-}
-
 
   function doDropMove(owner, type, x,y, index){
     if(owner==='P'){
