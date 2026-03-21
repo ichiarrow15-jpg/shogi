@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -23,17 +23,6 @@
     display: flex;
     justify-content: center;
   }
-  .check-highlight {
-    animation: checkFlash 0.6s ease-in-out 3;
-    box-shadow: 0 0 10px red;
-}
-
-@keyframes checkFlash {
-    0% { box-shadow: 0 0 0 red; }
-    50% { box-shadow: 0 0 15px red; }
-    100% { box-shadow: 0 0 0 red; }
-}
-
   .wrapper {
     width: 100%;
     max-width: 520px;
@@ -79,6 +68,7 @@
     opacity: 1;
   }
 
+
   .board-container {
     background: var(--board-bg);
     border-radius: 8px;
@@ -110,6 +100,7 @@
     background: var(--cell-move);
   }
 
+
   .piece {
     width: 80%;
     height: 80%;
@@ -138,6 +129,7 @@
     font-size: 9px;
     color: #d40000;
   }
+
 
   .captured-area {
     display: flex;
@@ -176,12 +168,14 @@
     outline: 2px solid #ff9933;
   }
 
+
   .status-bar {
     margin-top: 6px;
     font-size: 12px;
     display: flex;
     justify-content: space-between;
   }
+
 
   .result-overlay {
     position: fixed;
@@ -253,6 +247,7 @@
   <option value="10">10</option>
 </select>
 
+
       </label>
       <label>
         <input type="checkbox" id="highlightToggle" checked>
@@ -260,6 +255,7 @@
       </label>
     </div>
   </div>
+
 
   <div class="board-container">
     <div id="board" class="board"></div>
@@ -280,6 +276,7 @@
   </div>
 </div>
 
+
 <div id="resultOverlay" class="result-overlay">
   <div class="result-box">
     <div id="resultTitle" class="result-title"></div>
@@ -287,6 +284,7 @@
     <button class="result-btn" id="restartBtn">もう一度</button>
   </div>
 </div>
+
 
 <script>
   const boardEl = document.getElementById('board');
@@ -302,11 +300,13 @@
   const resultText = document.getElementById('resultText');
   const restartBtn = document.getElementById('restartBtn');
 
+
   const PIECE_CHARS = {
     FU: "歩", KY: "香", KE: "桂", GI: "銀", KI: "金",
     OU: "玉", GY: "王", KA: "角", HI: "飛",
     TO: "と", NY: "杏", NK: "圭", NG: "全", UM: "馬", RY: "龍"
   };
+
 
   let board = [];
   let playerCaptured = [];
@@ -317,12 +317,15 @@
   let bannerTimer = null;
   let gameOver = false;
 
+
   function initBoard() {
     board = Array.from({length:9}, () => Array(9).fill(null));
+
 
     function place(x,y,owner,type,promoted=false){
       board[y][x] = {owner,type,promoted};
     }
+
 
     // あなた側（下）
     place(0,8,'P','KY'); place(1,8,'P','KE'); place(2,8,'P','GI');
@@ -332,6 +335,7 @@
     place(7,7,'P','HI'); // 飛 右
     for(let x=0;x<9;x++) place(x,6,'P','FU');
 
+
     // 相手側（上）
     place(0,0,'E','KY'); place(1,0,'E','KE'); place(2,0,'E','GI');
     place(3,0,'E','KI'); place(4,0,'E','GY'); place(5,0,'E','KI');
@@ -339,6 +343,7 @@
     place(1,1,'E','HI');
     place(7,1,'E','KA');
     for(let x=0;x<9;x++) place(x,2,'E','FU');
+
 
     playerCaptured = [];
     aiCaptured = [];
@@ -349,6 +354,7 @@
     updateUI();
   }
 
+
   function renderBoard() {
     boardEl.innerHTML = "";
     for(let y=0;y<9;y++){
@@ -357,6 +363,7 @@
         cell.className = 'cell';
         cell.dataset.x = x;
         cell.dataset.y = y;
+
 
         if(selected && !selected.drop && selected.x === x && selected.y === y){
           cell.classList.add('selected');
@@ -367,6 +374,7 @@
           }
         }
 
+
         const piece = board[y][x];
         if(piece){
           const pEl = document.createElement('div');
@@ -376,30 +384,37 @@
           cell.appendChild(pEl);
         }
 
+
         cell.addEventListener('click', () => onCellClick(x,y));
         boardEl.appendChild(cell);
       }
     }
   }
 
+
   function renderCaptured() {
     playerCapturedEl.innerHTML = "";
     aiCapturedEl.innerHTML = "";
+
 
     // あなたの持ち駒
     playerCaptured.forEach((p, idx) => {
       const el = document.createElement('div');
       el.className = 'captured-piece';
 
+
       if (selected && selected.drop && selected.owner === 'P' && selected.index === idx) {
         el.classList.add('selected');
       }
 
+
       el.textContent = getPieceChar(p);
+
 
       el.addEventListener('click', () => {
         if (gameOver) return;
         if (currentPlayer !== 'P') return;
+
 
         if (selected && selected.drop && selected.owner === 'P' && selected.index === idx) {
           selected = null;
@@ -411,8 +426,10 @@
         updateUI();
       });
 
+
       playerCapturedEl.appendChild(el);
     });
+
 
     // 相手の持ち駒（表示のみ）
     aiCaptured.forEach((p) => {
@@ -423,11 +440,13 @@
     });
   }
 
+
   function updateUI() {
     renderBoard();
     renderCaptured();
     turnLabel.textContent = "手番：" + (currentPlayer==='P' ? "あなた" : "相手");
   }
+
 
   function getPieceChar(piece){
     if(piece.promoted){
@@ -443,11 +462,14 @@
     return PIECE_CHARS[piece.type] || "?";
   }
 
+
   function onCellClick(x,y){
     if(gameOver) return;
     if(currentPlayer !== 'P') return;
 
+
     const piece = board[y][x];
+
 
     // 持ち駒を打つ
     if(selected && selected.drop){
@@ -464,6 +486,7 @@
       }
       return;
     }
+
 
     // 盤上の駒を動かす
     if(selected && !selected.drop){
@@ -486,6 +509,7 @@
       }
     }
 
+
     // 新しく選択
     if(piece && piece.owner === 'P'){
       selected = {x,y};
@@ -497,15 +521,19 @@
     updateUI();
   }
 
+
   function inBounds(x,y){ return x>=0 && x<9 && y>=0 && y<9; }
+
 
   function isPromotionZone(owner, y){
     return owner==='P' ? (y<=2) : (y>=6);
   }
 
+
   function canPromote(type){
     return ['FU','KY','KE','GI','KA','HI'].includes(type);
   }
+
 
   function promoteIfNeeded(piece, fromY, toY){
     if(!canPromote(piece.type)) return;
@@ -514,11 +542,13 @@
     }
   }
 
+
   function getLegalMovesForPiece(x,y,owner){
     const piece = board[y][x];
     if(!piece || piece.owner!==owner) return [];
     const moves = [];
     const dir = owner==='P' ? -1 : 1;
+
 
     function addStep(dx,dy){
       const nx = x+dx, ny = y+dy;
@@ -544,8 +574,10 @@
       }
     }
 
+
     const t = piece.type;
     const promoted = piece.promoted;
+
 
     if(t==='FU' && !promoted){
       addStep(0,dir);
@@ -583,75 +615,33 @@
       addStep(1,1); addStep(-1,1); addStep(1,-1); addStep(-1,-1);
     }
 
+
     return moves;
   }
 
-function getDropMoves(owner, type){
+
+  function getDropMoves(owner, type){
     const moves = [];
-
-    outer: for(let y=0;y<9;y++){
-        for(let x=0;x<9;x++){
-            if(board[y][x]) continue;
-
-            // 行き所のない駒
-            if(type==='FU'){
-                if(owner==='P' && y===0) continue;
-                if(owner==='E' && y===8) continue;
-            }
-            if(type==='KY'){
-                if(owner==='P' && y===0) continue;
-                if(owner==='E' && y===8) continue;
-            }
-            if(type==='KE'){
-                if(owner==='P' && y<=1) continue;
-                if(owner==='E' && y>=7) continue;
-            }
-
-            // 二歩
-            if(type==='FU'){
-                for(let yy=0; yy<9; yy++){
-                    const p = board[yy][x];
-                    if(p && p.owner===owner && p.type==='FU' && !p.promoted){
-                        continue outer;
-                    }
-                }
-            }
-
-            // 打ち歩詰め
-            if(type==='FU'){
-                if(isUchifuzume(owner, x, y)){
-                    continue;
-                }
-            }
-
-            moves.push({to:{x,y}});
+    for(let y=0;y<9;y++){
+      for(let x=0;x<9;x++){
+        if(board[y][x]) continue;
+        if(type==='FU'){
+          if(owner==='P' && y===0) continue;
+          if(owner==='E' && y===8) continue;
         }
+        if(type==='KY'){
+          if(owner==='P' && y===0) continue;
+          if(owner==='E' && y===8) continue;
+        }
+        if(type==='KE'){
+          if(owner==='P' && y<=1) continue;
+          if(owner==='E' && y>=7) continue;
+        }
+        moves.push({to:{x,y}});
+      }
     }
     return moves;
-}
-  
-function isCheck(owner){
-    const enemy = owner === 'P' ? 'E' : 'P';
-    const king = findKing(owner);
-    if(!king) return false;
-
-    // 盤上の全ての敵駒から利きを調べる
-    for(let y=0;y<9;y++){
-        for(let x=0;x<9;x++){
-            const p = board[y][x];
-            if(!p || p.owner !== enemy) continue;
-
-            const moves = getLegalMovesForPiece(x, y, enemy);
-            for(const m of moves){
-                if(m.to.x === king.x && m.to.y === king.y){
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
+  }
 
 
   function demoteType(type){
@@ -669,9 +659,11 @@ function isCheck(owner){
     return type;
   }
 
+
   function doMove(fromX,fromY,toX,toY,owner){
     const piece = board[fromY][fromX];
     const target = board[toY][toX];
+
 
     if(target){
       const baseType = demoteType(target.type);
@@ -685,14 +677,18 @@ function isCheck(owner){
       }
     }
 
+
     board[toY][toX] = piece;
     board[fromY][fromX] = null;
 
+
     promoteIfNeeded(piece, fromY, toY);
+
 
     const moveName = describeMove(piece, fromX, fromY, toX, toY, !!target);
     showMoveBanner("あなた: " + moveName);
   }
+
 
   function doDropMove(owner, type, x,y, index){
     if(owner==='P'){
@@ -705,6 +701,7 @@ function isCheck(owner){
       showMoveBanner("相手: " + describeDrop(p.type, x,y));
     }
   }
+
 
   function describeMove(piece, fx,fy,tx,ty,capture){
     const names = {
@@ -724,6 +721,7 @@ function isCheck(owner){
     return text;
   }
 
+
   function describeDrop(type,x,y){
     const names = {
       FU:"歩", KY:"香", KE:"桂", GI:"銀", KI:"金",
@@ -731,6 +729,7 @@ function isCheck(owner){
     };
     return (names[type] || PIECE_CHARS[type] || "?") + "打ち";
   }
+
 
   function showMoveBanner(text){
     moveBanner.textContent = text;
@@ -740,6 +739,7 @@ function isCheck(owner){
       moveBanner.classList.remove('show');
     }, 2200);
   }
+
 
   function endGame(result){
     gameOver = true;
@@ -757,10 +757,12 @@ function isCheck(owner){
     }
   }
 
+
   restartBtn.addEventListener('click', ()=>{
     resultOverlay.classList.remove('show');
     initBoard();
   });
+
 
   // --- AI ---
   function aiTurn(){
@@ -768,7 +770,9 @@ function isCheck(owner){
     currentPlayer = 'E';
     updateUI();
 
+
     const diff = parseInt(difficultyEl.value,10);
+
 
     const moves = [];
     // 通常の手
@@ -800,16 +804,19 @@ function isCheck(owner){
       });
     });
 
+
     if(moves.length===0){
       endGame('win');
       return;
     }
+
 
     let best = null;
     moves.forEach(m=>{
       let score = Math.random();
       const toPiece = board[m.toY]?.[m.toX] || null;
       const fromPiece = (m.type==='move') ? board[m.fromY][m.fromX] : {owner:'E', type:m.pieceType, promoted:false};
+
 
       if(diff>=2 && toPiece && toPiece.owner==='P'){
         score += 5;
@@ -851,15 +858,18 @@ if (diff >= 6) {
   }
 }
 
+
 // --- 難易度7：悪い交換を避ける（価値判断） ---
 if (diff >= 7) {
   const pieceValue = { FU:1, KY:3, KE:4, GI:5, KI:6, KA:8, HI:9, OU:100, GY:100 };
   const fromPiece = (m.type==='move') ? board[m.fromY][m.fromX] : {type:m.pieceType};
   const target = board[m.toY]?.[m.toX];
 
+
   if (target && target.owner === 'P') {
     const gain = pieceValue[target.type] || 0;
     const loss = pieceValue[fromPiece.type] || 0;
+
 
     // 悪い交換は避ける
     if (loss > gain) score -= (loss - gain) * 1.5;
@@ -867,6 +877,7 @@ if (diff >= 7) {
     if (gain > loss) score += (gain - loss) * 1.5;
   }
 }
+
 
 // --- 難易度8：王手を強く意識 ---
 if (diff >= 8) {
@@ -876,6 +887,7 @@ if (diff >= 8) {
   }
 }
 
+
 // --- 難易度9：詰め筋を意識（王の周りに利きを増やす） ---
 if (diff >= 9) {
   const kingPos = findKing('P');
@@ -884,6 +896,7 @@ if (diff >= 9) {
     score += (10 - dist) * 0.4; // 王に近づくほど高評価
   }
 }
+
 
 // --- 難易度10：総合評価（攻め・守り・危険回避・交換） ---
 if (diff >= 10) {
@@ -897,11 +910,13 @@ if (diff >= 10) {
     if (distAfter > distBefore) score += 2;
   }
 
+
   // 相手の攻め駒を消す
   const target = board[m.toY]?.[m.toX];
   if (target && target.owner === 'P' && ['HI','KA','GI','KE'].includes(target.type)) {
     score += 8;
   }
+
 
   // 危険マス回避（強化版）
   const enemyMoves = [];
@@ -919,15 +934,19 @@ if (diff >= 10) {
 }
 
 
+
+
       if(!best || score>best.score){
         best = {...m, score};
       }
     });
 
+
     if(!best){
       endGame('win');
       return;
     }
+
 
     if(best.type==='move'){
       const piece = board[best.fromY][best.fromX];
@@ -948,6 +967,7 @@ if (diff >= 10) {
       doDropMove('E', best.pieceType, best.toX, best.toY, best.dropIndex);
     }
 
+
     if(!gameOver){
       currentPlayer = 'P';
       updateUI();
@@ -955,57 +975,19 @@ if (diff >= 10) {
       updateUI();
     }
   }
-  // 打ち歩詰めチェック
-function isUchifuzume(owner, x, y){
-    // 仮盤面を作る
-    const sim = JSON.parse(JSON.stringify(board));
 
-    // 歩を打つ
-    sim[y][x] = { owner: owner, type: 'FU', promoted: false };
 
-    // 相手玉の位置
-    const enemy = owner === 'P' ? 'E' : 'P';
-    const king = findKing(enemy);
-    if(!king) return false;
-
-    // 歩が王の前に打たれたか
-    const dir = owner === 'P' ? -1 : 1;
-    if(!(king.x === x && king.y === y + dir)) return false;
-
-    // 王の逃げ道を調べる
-    const escapes = getLegalMovesForPiece(king.x, king.y, enemy);
-    return escapes.length === 0;
-}
-
-function findKing(owner){
+  function findKing(owner){
     for(let y=0;y<9;y++){
-        for(let x=0;x<9;x++){
-            const p = board[y][x];
-            if(!p) continue;
-
-            // 先手の王（O）、後手の玉（G）
-            if(owner==='P' && p.type==='O') return {x, y};
-            if(owner==='E' && p.type==='G') return {x, y};
-        }
+      for(let x=0;x<9;x++){
+        const p = board[y][x];
+        if(!p) continue;
+        if(owner==='P' && p.type==='OU') return {x,y};
+        if(owner==='E' && p.type==='GY') return {x,y};
+      }
     }
     return null;
-}
-  function showCheckEffect(owner){
-    const king = findKing(owner);
-    if(!king) return;
-
-    const cell = document.querySelector(
-        `.cell[data-x="${king.x}"][data-y="${king.y}"]`
-    );
-
-    if(cell){
-        cell.classList.add("check-highlight");
-        setTimeout(()=>cell.classList.remove("check-highlight"), 2000);
-    }
-
-    statusEl.textContent = owner === 'P' ? "あなたが王手されています！" : "王手！";
-}
-
+  }
 
 
   initBoard();
