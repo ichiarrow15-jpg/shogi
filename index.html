@@ -23,6 +23,17 @@
     display: flex;
     justify-content: center;
   }
+  .check-highlight {
+    animation: checkFlash 0.6s ease-in-out 3;
+    box-shadow: 0 0 10px red;
+}
+
+@keyframes checkFlash {
+    0% { box-shadow: 0 0 0 red; }
+    50% { box-shadow: 0 0 15px red; }
+    100% { box-shadow: 0 0 0 red; }
+}
+
   .wrapper {
     width: 100%;
     max-width: 520px;
@@ -618,6 +629,28 @@ function getDropMoves(owner, type){
     }
     return moves;
 }
+  
+function isCheck(owner){
+    const enemy = owner === 'P' ? 'E' : 'P';
+    const king = findKing(owner);
+    if(!king) return false;
+
+    // 盤上の全ての敵駒から利きを調べる
+    for(let y=0;y<9;y++){
+        for(let x=0;x<9;x++){
+            const p = board[y][x];
+            if(!p || p.owner !== enemy) continue;
+
+            const moves = getLegalMovesForPiece(x, y, enemy);
+            for(const m of moves){
+                if(m.to.x === king.x && m.to.y === king.y){
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
 
 
 
@@ -957,6 +990,22 @@ function findKing(owner){
     }
     return null;
 }
+  function showCheckEffect(owner){
+    const king = findKing(owner);
+    if(!king) return;
+
+    const cell = document.querySelector(
+        `.cell[data-x="${king.x}"][data-y="${king.y}"]`
+    );
+
+    if(cell){
+        cell.classList.add("check-highlight");
+        setTimeout(()=>cell.classList.remove("check-highlight"), 2000);
+    }
+
+    statusEl.textContent = owner === 'P' ? "あなたが王手されています！" : "王手！";
+}
+
 
 
   initBoard();
