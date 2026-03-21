@@ -663,6 +663,30 @@
     const moveName = describeMove(piece, fromX, fromY, toX, toY, !!target);
     showMoveBanner("あなた: " + moveName);
   }
+  // 打ち歩詰めチェック（完全安全版）
+function isUchifuzume(owner, x, y) {
+  // 仮盤面を作る
+  const sim = JSON.parse(JSON.stringify(board));
+
+  // 歩を打つ
+  sim[y][x] = { owner, type:'FU', promoted:false };
+
+  // 相手玉の位置
+  const enemy = owner === 'P' ? 'E' : 'P';
+  const king = findKing(enemy, sim);
+  if (!king) return false;
+
+  // 歩が王の前に打たれたか
+  const dir = owner === 'P' ? -1 : 1;
+  if (!(king.x === x && king.y === y + dir)) return false;
+
+  // 相手玉の逃げ道を調べる
+  const escapes = getLegalMovesForPiece(king.x, king.y, enemy, sim);
+
+  // 逃げ道がなければ打ち歩詰め
+  return escapes.length === 0;
+}
+
 
   function doDropMove(owner, type, x,y, index){
     if(owner==='P'){
