@@ -606,11 +606,19 @@ function getDropMoves(owner, type){
                 }
             }
 
+            // 打ち歩詰め
+            if(type==='FU'){
+                if(isUchifuzume(owner, x, y)){
+                    continue;
+                }
+            }
+
             moves.push({to:{x,y}});
         }
     }
     return moves;
 }
+
 
 
   function demoteType(type){
@@ -914,6 +922,28 @@ if (diff >= 10) {
       updateUI();
     }
   }
+  // 打ち歩詰めチェック
+function isUchifuzume(owner, x, y){
+    // 仮盤面を作る
+    const sim = JSON.parse(JSON.stringify(board));
+
+    // 歩を打つ
+    sim[y][x] = { owner: owner, type: 'FU', promoted: false };
+
+    // 相手玉の位置
+    const enemy = owner === 'P' ? 'E' : 'P';
+    const king = findKing(enemy);
+    if(!king) return false;
+
+    // 歩が王の前に打たれたか
+    const dir = owner === 'P' ? -1 : 1;
+    if(!(king.x === x && king.y === y + dir)) return false;
+
+    // 王の逃げ道を調べる
+    const escapes = getLegalMovesForPiece(king.x, king.y, enemy);
+    return escapes.length === 0;
+}
+
 function findKing(owner){
     for(let y=0;y<9;y++){
         for(let x=0;x<9;x++){
