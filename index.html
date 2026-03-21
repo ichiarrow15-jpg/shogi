@@ -856,6 +856,54 @@ if (diff >= 10) {
         enemyMoves.push(...getLegalMovesForPiece(xx, yy, 'P').map(mv => mv.to));
       }
     }
+    // --- 難易度6〜10：先読み（簡易ミニマックス） ---
+if (diff >= 6) {
+  // AIがこの手を指した後の盤面を仮想で作る
+  const simBoard = JSON.parse(JSON.stringify(board));
+
+  function simulateMove(bd, move, owner) {
+    const newBoard = JSON.parse(JSON.stringify(bd));
+    if (move.type === 'move') {
+      const pc = newBoard[move.fromY][move.fromX];
+      newBoard[move.fromY][move.fromX] = null;
+      newBoard[move.toY][move.toX] = pc;
+    } else {
+      // 打ち
+      newBoard[move.toY][move.toX] = { owner, type: move.pieceType, promoted:false };
+    }
+    return newBoard;
+  }
+
+  // AIがこの手を指した後の盤面
+  const afterBoard = simulateMove(simBoard, m, 'E');
+
+  // 相手の反撃を調べる
+  let worstLoss = 0;
+  for (let yy = 0; yy < 9; yy++) {
+    for (let xx = 0; xx < 9; xx++) {
+      const p = afterBoard[yy][xx];
+      if (p && p.owner === 'P') {
+        const enemyMoves = getLegalMovesForPiece(xx, yy, 'P');
+        enemyMoves.forEach(em => {
+          const target = afterBoard[em.to.y][em.to.x];
+          if (target && target.owner === 'E') {
+            // 取られる駒の価値
+            const val = {FU:1,KY:3,KE:4,GI:5,KI:6,KA:8,HI:9,OU:100,GY:100}[target.type] || 0;
+            if (val > worstLoss) worstLoss = val;
+          }
+        });
+      }
+    }
+  }
+
+  // 相手に大駒を取られる手は避ける
+  if (diff >= 6) score -= worstLoss * 1.2;
+  if (diff >= 7) score -= worstLoss * 1.5;
+  if (diff >= 8) score -= worstLoss * 2.0;
+  if (diff >= 9) score -= worstLoss * 2.5;
+  if (diff >= 10) score -= worstLoss * 3.0;
+}
+
   }
   if (enemyMoves.some(t => t.x === m.toX && t.y === m.toY)) {
     score -= 5;
