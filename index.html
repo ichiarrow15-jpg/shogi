@@ -576,27 +576,53 @@
   }
 
   function getDropMoves(owner, type){
-    const moves = [];
-    for(let y=0;y<9;y++){
-      for(let x=0;x<9;x++){
-        if(board[y][x]) continue;
-        if(type==='FU'){
-          if(owner==='P' && y===0) continue;
-          if(owner==='E' && y===8) continue;
-        }
-        if(type==='KY'){
-          if(owner==='P' && y===0) continue;
-          if(owner==='E' && y===8) continue;
-        }
-        if(type==='KE'){
-          if(owner==='P' && y<=1) continue;
-          if(owner==='E' && y>=7) continue;
-        }
-        moves.push({to:{x,y}});
-      }
-    }
-    return moves;
+  const moves = [];
+
+  for(let y=0;y<9;y++){
+    for(let x=0;x<9;x++){
+      if(board[y][x]) continue;
+
+      // 行き所のない駒
+      if(type === 'FU' && owner==='P' && y===0) continue;
+      if(type === 'FU' && owner==='E' && y===8) continue;
+
+      if(type === 'KY' && owner==='P' && y===0) continue;
+      if(type === 'KY' && owner==='E' && y===8) continue;
+
+      if(type === 'KE' && owner==='P' && y<=1) continue;
+      if(type === 'KE' && owner==='E' && y>=7) continue;
+
+      // 二歩
+      if(type === 'FU' && hasPawnInFile(owner, x)) continue;
+
+      // 打ち歩詰め
+      if(type === 'FU' && isUchifuzume(owner, x, y)) continue;
+      function isUchifuzume(owner, x, y) {
+ 　　　 // 歩を打った直後の仮盤面を作る
+  const sim = JSON.parse(JSON.stringify(board));
+  sim[y][x] = { owner, type:'FU', promoted:false };
+
+  // 相手玉の位置
+  const king = findKing(owner === 'P' ? 'E' : 'P', sim);
+  if (!king) return false;
+
+  // 歩が王の前に打たれているか
+  const dir = owner === 'P' ? -1 : 1;
+  if (king.x === x && king.y === y + dir) {
+    // 相手玉が逃げられるかチェック
+    const escapes = getLegalMovesForPiece(king.x, king.y, king.owner, sim);
+    return escapes.length === 0;
   }
+  return false;
+}
+
+
+      moves.push({to:{x,y}});
+    }
+  }
+  return moves;
+}
+
 
   function demoteType(type){
     switch(type){
