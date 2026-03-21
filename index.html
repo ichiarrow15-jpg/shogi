@@ -503,37 +503,41 @@
     }
   }
 
-  function getLegalMovesForPiece(x,y,owner){
-    const piece = board[y][x];
-    if(!piece || piece.owner!==owner) return [];
+function getLegalMovesForPiece(x, y, owner, customBoard = null) {
+    const bd = customBoard || board;
+    const piece = bd[y][x];
+    if (!piece || piece.owner !== owner) return [];
+
     const moves = [];
-    const dir = owner==='P' ? -1 : 1;
+    const dir = owner === 'P' ? -1 : 1;
 
-    function addStep(dx,dy){
-      const nx = x+dx, ny = y+dy;
-      if(!inBounds(nx,ny)) return;
-      const target = board[ny][nx];
-      if(!target || target.owner!==owner){
-        moves.push({from:{x,y}, to:{x:nx,y:ny}});
-      }
-    }
-    function addSlide(dx,dy){
-      let nx = x+dx, ny = y+dy;
-      while(inBounds(nx,ny)){
-        const target = board[ny][nx];
-        if(!target){
-          moves.push({from:{x,y}, to:{x:nx,y:ny}});
-        } else {
-          if(target.owner!==owner){
-            moves.push({from:{x,y}, to:{x:nx,y:ny}});
-          }
-          break;
+    function addStep(dx, dy) {
+        const nx = x + dx, ny = y + dy;
+        if (!inBounds(nx, ny)) return;
+        const target = bd[ny][nx];
+        if (!target || target.owner !== owner) {
+            moves.push({ from: { x, y }, to: { x: nx, y: ny } });
         }
-        nx+=dx; ny+=dy;
-      }
     }
 
-    const t = piece.type;
+    function addSlide(dx, dy) {
+        let nx = x + dx, ny = y + dy;
+        while (inBounds(nx, ny)) {
+            const target = bd[ny][nx];
+            if (!target) {
+                moves.push({ from: { x, y }, to: { x: nx, y: ny } });
+            } else {
+                if (target.owner !== owner) {
+                    moves.push({ from: { x, y }, to: { x: nx, y: ny } });
+                }
+                break;
+            }
+            nx += dx; ny += dy;
+        }
+    }
+
+    // ← ここに各駒の動きをそのまま入れる（あなたのコードのままでOK）
+  const t = piece.type;
     const promoted = piece.promoted;
 
     if(t==='FU' && !promoted){
@@ -573,7 +577,7 @@
     }
 
     return moves;
-  }
+}
 
   function getDropMoves(owner, type){
   const moves = [];
