@@ -575,28 +575,43 @@
     return moves;
   }
 
-  function getDropMoves(owner, type){
+function getDropMoves(owner, type){
     const moves = [];
-    for(let y=0;y<9;y++){
-      for(let x=0;x<9;x++){
-        if(board[y][x]) continue;
-        if(type==='FU'){
-          if(owner==='P' && y===0) continue;
-          if(owner==='E' && y===8) continue;
+
+    outer: for(let y=0;y<9;y++){
+        for(let x=0;x<9;x++){
+            if(board[y][x]) continue;
+
+            // 行き所のない駒
+            if(type==='FU'){
+                if(owner==='P' && y===0) continue;
+                if(owner==='E' && y===8) continue;
+            }
+            if(type==='KY'){
+                if(owner==='P' && y===0) continue;
+                if(owner==='E' && y===8) continue;
+            }
+            if(type==='KE'){
+                if(owner==='P' && y<=1) continue;
+                if(owner==='E' && y>=7) continue;
+            }
+
+            // 二歩
+            if(type==='FU'){
+                for(let yy=0; yy<9; yy++){
+                    const p = board[yy][x];
+                    if(p && p.owner===owner && p.type==='FU' && !p.promoted){
+                        continue outer;
+                    }
+                }
+            }
+
+            moves.push({to:{x,y}});
         }
-        if(type==='KY'){
-          if(owner==='P' && y===0) continue;
-          if(owner==='E' && y===8) continue;
-        }
-        if(type==='KE'){
-          if(owner==='P' && y<=1) continue;
-          if(owner==='E' && y>=7) continue;
-        }
-        moves.push({to:{x,y}});
-      }
     }
     return moves;
-  }
+}
+
 
   function demoteType(type){
     switch(type){
