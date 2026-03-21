@@ -914,18 +914,20 @@ if (diff >= 10) {
       updateUI();
     }
   }
-
-  function findKing(owner){
+function findKing(owner){
     for(let y=0;y<9;y++){
-      for(let x=0;x<9;x++){
-        const p = board[y][x];
-        if(!p) continue;
-        if(owner==='P' && p.type==='OU') return {x,y};
-        if(owner==='E' && p.type==='GY') return {x,y};
-      }
+        for(let x=0;x<9;x++){
+            const p = board[y][x];
+            if(!p) continue;
+
+            // 先手の王（O）、後手の玉（G）
+            if(owner==='P' && p.type==='O') return {x, y};
+            if(owner==='E' && p.type==='G') return {x, y};
+        }
     }
     return null;
-  }
+}
+
 
   initBoard();
 </script>
