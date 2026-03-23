@@ -3,810 +3,755 @@
 <head>
 <meta charset="UTF-8">
 <title>シンプル将棋</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  :root {
-    --board-size: min(90vw, 90vh);
-    --cell-size: calc(var(--board-size) / 9);
-    --bg: #f4e2c4;
-    --line: #b48b4a;
-    --piece-my: #222;
-    --piece-ai: #b02020;
-    --highlight: rgba(80,160,255,0.35);
+  :root{
+    --board-bg:#f3e0c2;
+    --square-size:min(9vw,9vh);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: var(--bg);
-    display: flex;
-    justify-content: center;
-    padding: 10px;
+    background:#e9dfcf;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    min-height:100vh;
+    padding:10px;
   }
-  .wrapper {
-    width: 100%;
-    max-width: 900px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: center;
+  #app{
+    background:#f7ebd6;
+    border:2px solid #b89b6b;
+    border-radius:8px;
+    padding:8px;
+    max-width:900px;
+    width:100%;
   }
-  .top-bar {
-    width: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
+  #top-bar{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:6px;
+    gap:6px;
   }
-  .top-bar-left, .top-bar-right {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
+  #controls{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+    font-size:12px;
   }
-  input[type="range"] {
-    width: 140px;
+  #controls label{display:flex;align-items:center;gap:4px;}
+  #move-message{
+    position:relative;
+    flex:1;
+    min-height:1.5em;
+    font-size:13px;
+    color:#333;
   }
-  .board-container {
-    position: relative;
-    width: var(--board-size);
-    height: var(--board-size);
-    border: 3px solid var(--line);
-    background: #f9e9c9;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  #move-toast{
+    position:absolute;
+    top:0;
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,0.75);
+    color:#fff;
+    padding:4px 10px;
+    border-radius:999px;
+    font-size:12px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .3s;
+    white-space:nowrap;
   }
-  .board {
-    display: grid;
-    grid-template-columns: repeat(9, 1fr);
-    grid-template-rows: repeat(9, 1fr);
-    width: 100%;
-    height: 100%;
+  #board-wrapper{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:center;
   }
-  .cell {
-    border: 1px solid var(--line);
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+  #board{
+    background:var(--board-bg);
+    border:2px solid #b89b6b;
+    display:grid;
+    grid-template-columns:repeat(9,var(--square-size));
+    grid-template-rows:repeat(9,var(--square-size));
+    touch-action:manipulation;
   }
-  .cell.highlight {
-    background: var(--highlight);
+  .square{
+    border:1px solid #c9a973;
+    position:relative;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:rgba(255,255,255,0.2);
   }
-  .piece {
-    width: 80%;
-    height: 80%;
-    border-radius: 6px;
-    background: #fdf5dd;
-    border: 1px solid #c79b4a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: calc(var(--cell-size) * 0.45);
-    line-height: 1;
-    text-align: center;
-    transform-origin: center center;
-    user-select: none;
-    touch-action: manipulation;
+  .square.dark{
+    background:rgba(0,0,0,0.02);
   }
-  .piece.my {
-    color: var(--piece-my);
+  .square.highlight{
+    box-shadow:inset 0 0 0 3px rgba(0,150,255,0.7);
+    background:rgba(150,210,255,0.35);
   }
-  .piece.ai {
-    color: var(--piece-ai);
-    transform: rotate(180deg);
+  .piece{
+    width:80%;
+    height:80%;
+    background:#fdf5e6;
+    border-radius:6px;
+    border:1px solid #b08b4a;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    position:relative;
+    font-weight:700;
+    font-size:calc(var(--square-size)*0.45);
+    line-height:1;
+    user-select:none;
+    touch-action:none;
   }
-  .piece.promoted {
-    background: #ffe3c4;
-    border-color: #d06030;
+  .piece.player{color:#222;}
+  .piece.enemy{color:#1b4f9c;}
+  .piece.promoted{
+    background:#ffe9e9;
+    border-color:#d33;
   }
-  .hand-area {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    font-size: 13px;
+  .piece .promark{
+    position:absolute;
+    top:2px;
+    left:3px;
+    font-size:0.45em;
+    color:#d00;
+    font-weight:900;
   }
-  .hand {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 4px 0;
+  .piece.selected{
+    outline:3px solid #ff9800;
   }
-  .hand-piece {
-    min-width: 26px;
-    padding: 2px 4px;
-    border-radius: 4px;
-    border: 1px solid #c79b4a;
-    background: #fff7dd;
-    text-align: center;
-    font-size: 13px;
+  .piece.enemy{
+    transform:rotate(180deg);
   }
-  .hand-piece.my { color: var(--piece-my); }
-  .hand-piece.ai { color: var(--piece-ai); }
-  .hand-piece.selected {
-    outline: 2px solid #5090ff;
+  #side-panels{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    min-width:90px;
+    font-size:11px;
   }
-  .toast {
-    position: fixed;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(30,30,30,0.9);
-    color: #fff;
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 13px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s ease;
-    z-index: 20;
+  .captured-box{
+    background:#f3e0c2;
+    border:1px solid #b89b6b;
+    border-radius:4px;
+    padding:4px;
   }
-  .toast.show {
-    opacity: 1;
+  .captured-title{
+    font-weight:700;
+    margin-bottom:2px;
+    text-align:center;
   }
-  .result-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 15;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
+  .captured-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:2px;
+    justify-content:center;
   }
-  .result-overlay.show {
-    opacity: 1;
-    pointer-events: auto;
+  .cap-piece{
+    width:26px;
+    height:26px;
+    border-radius:4px;
+    border:1px solid #b08b4a;
+    background:#fff7e6;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
   }
-  .result-box {
-    background: #fffdf5;
-    padding: 18px 26px;
-    border-radius: 10px;
-    text-align: center;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
-    animation: pop 0.35s ease;
+  .cap-piece.selected{
+    outline:2px solid #ff9800;
   }
-  .result-box h2 {
-    margin-bottom: 8px;
-    font-size: 22px;
+  #status{
+    margin-top:4px;
+    font-size:11px;
+    text-align:center;
   }
-  .result-box p {
-    margin-bottom: 10px;
-    font-size: 14px;
+  #overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.7);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:50;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .4s;
   }
-  .result-box button {
-    padding: 6px 16px;
-    border-radius: 999px;
-    border: none;
-    background: #f0b040;
-    color: #222;
-    font-weight: 600;
-    cursor: pointer;
+  #overlay.show{
+    opacity:1;
+    pointer-events:auto;
   }
-  .result-box button:active {
-    transform: scale(0.97);
+  #overlay-content{
+    text-align:center;
+    color:#fff;
+    animation:pulse 1.2s infinite;
   }
-  @keyframes pop {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+  #overlay-content h1{
+    font-size:40px;
+    margin-bottom:10px;
   }
-  .turn-indicator {
-    font-size: 13px;
+  #overlay-content button{
+    margin-top:10px;
+    padding:6px 16px;
+    border-radius:999px;
+    border:none;
+    background:#ffeb3b;
+    color:#333;
+    font-weight:700;
+    cursor:pointer;
+  }
+  @keyframes pulse{
+    0%{transform:scale(1);}
+    50%{transform:scale(1.05);}
+    100%{transform:scale(1);}
+  }
+  @media (max-width:600px){
+    :root{--square-size:10vw;}
+    #top-bar{flex-direction:column;align-items:flex-start;}
+    #side-panels{flex-direction:row;justify-content:space-between;width:100%;}
   }
 </style>
 </head>
 <body>
-<div class="wrapper">
-  <div class="top-bar">
-    <div class="top-bar-left">
-      <span>難易度: <span id="difficultyValue">5</span></span>
-      <input id="difficulty" type="range" min="1" max="10" value="5">
-      <label style="display:flex;align-items:center;gap:4px;font-size:13px;">
-        <input id="highlightToggle" type="checkbox" checked>
+<div id="app">
+  <div id="top-bar">
+    <div id="controls">
+      <label>難易度
+        <input type="range" id="difficulty" min="1" max="10" value="5">
+        <span id="diff-label">5</span>
+      </label>
+      <label>
+        <input type="checkbox" id="highlightToggle" checked>
         いけるマス表示
       </label>
+      <span id="turn-label">あなたの手番</span>
     </div>
-    <div class="top-bar-right">
-      <span class="turn-indicator" id="turnIndicator">あなたの手番</span>
-      <button id="resetBtn" style="padding:4px 10px;border-radius:999px;border:1px solid #c79b4a;background:#fff7dd;font-size:12px;">リセット</button>
+    <div id="move-message">
+      <div id="move-toast"></div>
     </div>
   </div>
 
-  <div class="hand-area">
-    <div>あなたの持ち駒: <div id="myHand" class="hand"></div></div>
-    <div>相手の持ち駒: <div id="aiHand" class="hand"></div></div>
-  </div>
-
-  <div class="board-container">
-    <div id="board" class="board"></div>
-    <div id="resultOverlay" class="result-overlay">
-      <div class="result-box">
-        <h2 id="resultTitle"></h2>
-        <p id="resultText"></p>
-        <button id="againBtn">もう一度</button>
+  <div id="board-wrapper">
+    <div id="board"></div>
+    <div id="side-panels">
+      <div class="captured-box">
+        <div class="captured-title">あなたの持ち駒</div>
+        <div id="player-captured" class="captured-list"></div>
       </div>
+      <div class="captured-box">
+        <div class="captured-title">相手の持ち駒</div>
+        <div id="enemy-captured" class="captured-list"></div>
+      </div>
+      <div id="status"></div>
     </div>
   </div>
 </div>
 
-<div id="toast" class="toast"></div>
+<div id="overlay">
+  <div id="overlay-content">
+    <h1 id="result-text"></h1>
+    <p id="result-sub"></p>
+    <button id="restart-btn">もう一度</button>
+  </div>
+</div>
 
 <script>
-  // --- 定数 ---
-  const SIZE = 9;
-  const PLAYER = 'P';
-  const AI = 'A';
+(() => {
+  const boardEl = document.getElementById('board');
+  const playerCapEl = document.getElementById('player-captured');
+  const enemyCapEl = document.getElementById('enemy-captured');
+  const diffInput = document.getElementById('difficulty');
+  const diffLabel = document.getElementById('diff-label');
+  const highlightToggle = document.getElementById('highlightToggle');
+  const turnLabel = document.getElementById('turn-label');
+  const statusEl = document.getElementById('status');
+  const toastEl = document.getElementById('move-toast');
+  const overlay = document.getElementById('overlay');
+  const resultText = document.getElementById('result-text');
+  const resultSub = document.getElementById('result-sub');
+  const restartBtn = document.getElementById('restart-btn');
 
-  const PIECES = {
-    FU: '歩', KY: '香', KE: '桂', GI: '銀', KI: '金',
-    KA: '角', HI: '飛', OU: '王', GY: '玉'
+  const PIECE_CHARS = {
+    FU:'歩', KY:'香', KE:'桂', GI:'銀', KI:'金',
+    OU:'王', GY:'玉', KA:'角', HI:'飛'
+  };
+  const PROMOTED_CHARS = {
+    FU:'と', KY:'杏', KE:'圭', GI:'全', KA:'馬', HI:'龍'
+  };
+  const MOVE_NAMES = {
+    FU:'歩の手', KY:'香の手', KE:'桂の手', GI:'銀の手',
+    KI:'金の手', OU:'王の手', GY:'玉の手',
+    KA:'角の手', HI:'飛の手'
   };
 
-  const PROMOTABLE = ['FU','KY','KE','GI','KA','HI'];
-
-  // 初期配置（[type, owner, promoted]）
-  function initialBoard() {
-    const emptyRow = () => Array(SIZE).fill(null);
-    const b = [];
-    for (let r = 0; r < SIZE; r++) b.push(emptyRow());
-
-    // 上側（AI）
-    b[0][0] = {t:'KY', o:AI, p:false};
-    b[0][1] = {t:'KE', o:AI, p:false};
-    b[0][2] = {t:'GI', o:AI, p:false};
-    b[0][3] = {t:'KI', o:AI, p:false};
-    b[0][4] = {t:'GY', o:AI, p:false};
-    b[0][5] = {t:'KI', o:AI, p:false};
-    b[0][6] = {t:'GI', o:AI, p:false};
-    b[0][7] = {t:'KE', o:AI, p:false};
-    b[0][8] = {t:'KY', o:AI, p:false};
-    b[1][1] = {t:'HI', o:AI, p:false};
-    b[1][7] = {t:'KA', o:AI, p:false};
-    for (let c = 0; c < SIZE; c++) {
-      b[2][c] = {t:'FU', o:AI, p:false};
-    }
-
-    // 下側（PLAYER）
-    b[8][0] = {t:'KY', o:PLAYER, p:false};
-    b[8][1] = {t:'KE', o:PLAYER, p:false};
-    b[8][2] = {t:'GI', o:PLAYER, p:false};
-    b[8][3] = {t:'KI', o:PLAYER, p:false};
-    b[8][4] = {t:'OU', o:PLAYER, p:false};
-    b[8][5] = {t:'KI', o:PLAYER, p:false};
-    b[8][6] = {t:'GI', o:PLAYER, p:false};
-    b[8][7] = {t:'KE', o:PLAYER, p:false};
-    b[8][8] = {t:'KY', o:PLAYER, p:false};
-    b[7][7] = {t:'HI', o:PLAYER, p:false};
-    b[7][1] = {t:'KA', o:PLAYER, p:false};
-    for (let c = 0; c < SIZE; c++) {
-      b[6][c] = {t:'FU', o:PLAYER, p:false};
-    }
-    return b;
-  }
-
-  let board = initialBoard();
-  let myHand = {};
-  let aiHand = {};
-  let selected = null; // {r,c} or {hand:true,type}
-  let legalMoves = [];
-  let turn = PLAYER;
+  let board = [];
+  let playerCaptured = [];
+  let enemyCaptured = [];
+  let currentPlayer = 'P'; // P: player, E: enemy
+  let selected = null; // {x,y} or {drop:true,type,owner}
+  let selectedCapIndex = null;
   let gameOver = false;
-  let difficulty = 5;
-  let highlightOn = true;
   let toastTimer = null;
 
-  const boardEl = document.getElementById('board');
-  const myHandEl = document.getElementById('myHand');
-  const aiHandEl = document.getElementById('aiHand');
-  const toastEl = document.getElementById('toast');
-  const resultOverlay = document.getElementById('resultOverlay');
-  const resultTitle = document.getElementById('resultTitle');
-  const resultText = document.getElementById('resultText');
-  const turnIndicator = document.getElementById('turnIndicator');
+  function initBoard(){
+    board = Array.from({length:9},()=>Array(9).fill(null));
+    // helper
+    const place = (x,y,owner,type)=>{board[y][x]={owner,type,promoted:false};};
 
-  // --- ユーティリティ ---
-  function cloneBoard(b) {
-    return b.map(row => row.map(cell => cell ? {...cell} : null));
+    // bottom (player)
+    const bottomRow = ['KY','KE','GI','KI','OU','KI','GI','KE','KY'];
+    bottomRow.forEach((t,x)=>place(x,8,'P',t));
+    place(1,7,'P','HI'); // 飛 右
+    place(7,7,'P','KA'); // 角 左
+    for(let x=0;x<9;x++) place(x,6,'P','FU');
+
+    // top (enemy)
+    const topRow = ['KY','KE','GI','KI','GY','KI','GI','KE','KY']; // 玉
+    topRow.forEach((t,x)=>place(x,0,'E',t));
+    place(1,1,'E','HI'); // 飛 右（相手から見て）
+    place(7,1,'E','KA'); // 角 左
+    for(let x=0;x<9;x++) place(x,2,'E','FU');
   }
 
-  function inZone(owner, r) {
-    return owner === PLAYER ? r <= 2 : r >= 6;
-  }
-
-  function pieceLabel(piece) {
-    if (!piece) return '';
-    return PIECES[piece.t] || '';
-  }
-
-  function addToHand(hand, type) {
-    const base = type.replace('+','');
-    hand[base] = (hand[base] || 0) + 1;
-  }
-
-  function removeFromHand(hand, type) {
-    if (!hand[type]) return;
-    hand[type]--;
-    if (hand[type] <= 0) delete hand[type];
-  }
-
-  function isEnemy(piece, owner) {
-    return piece && piece.o !== owner;
-  }
-
-  function isFriend(piece, owner) {
-    return piece && piece.o === owner;
-  }
-
-  // --- 駒の動き ---
-  function goldLikeDirs(owner) {
-    const dir = owner === PLAYER ? -1 : 1;
-    return [
-      {dr:dir, dc:0},
-      {dr:dir, dc:-1},
-      {dr:dir, dc:1},
-      {dr:0, dc:-1},
-      {dr:0, dc:1},
-      {dr:-dir, dc:0}
-    ];
-  }
-
-  function movesForPiece(r, c, piece, b) {
-    const res = [];
-    const owner = piece.o;
-    const dir = owner === PLAYER ? -1 : 1;
-    const inside = (rr,cc)=> rr>=0 && rr<SIZE && cc>=0 && cc<SIZE;
-
-    function addStep(dr,dc) {
-      const nr = r+dr, nc = c+dc;
-      if (!inside(nr,nc)) return;
-      const target = b[nr][nc];
-      if (isFriend(target, owner)) return;
-      res.push({r:nr,c:nc});
-    }
-    function addSlide(dr,dc) {
-      let nr = r+dr, nc = c+dc;
-      while (inside(nr,nc)) {
-        const target = b[nr][nc];
-        if (isFriend(target, owner)) break;
-        res.push({r:nr,c:nc});
-        if (target) break;
-        nr += dr; nc += dc;
+  function renderBoard(){
+    boardEl.innerHTML='';
+    for(let y=0;y<9;y++){
+      for(let x=0;x<9;x++){
+        const sq = document.createElement('div');
+        sq.className='square'+(((x+y)&1)?' dark':'');
+        sq.dataset.x=x;
+        sq.dataset.y=y;
+        const piece = board[y][x];
+        if(piece){
+          const el = document.createElement('div');
+          el.className='piece '+(piece.owner==='P'?'player':'enemy')+(piece.promoted?' promoted':'');
+          el.dataset.x=x;
+          el.dataset.y=y;
+          el.textContent = piece.promoted && PROMOTED_CHARS[piece.type] ? PROMOTED_CHARS[piece.type] : PIECE_CHARS[piece.type];
+          if(piece.promoted){
+            const pm = document.createElement('div');
+            pm.className='promark';
+            pm.textContent='成';
+            el.appendChild(pm);
+          }
+          if(selected && !selected.drop && selected.x===x && selected.y===y){
+            el.classList.add('selected');
+          }
+          sq.appendChild(el);
+        }
+        boardEl.appendChild(sq);
       }
     }
-
-    const t = piece.t;
-    const promoted = piece.p;
-
-    if (promoted && ['FU','KY','KE','GI'].includes(t)) {
-      goldLikeDirs(owner).forEach(d=>addStep(d.dr,d.dc));
-      return res;
+    if(selected && selected.drop){
+      document.querySelectorAll('.cap-piece').forEach((el,i)=>{
+        if(i===selectedCapIndex) el.classList.add('selected');
+        else el.classList.remove('selected');
+      });
+    }else{
+      document.querySelectorAll('.cap-piece').forEach(el=>el.classList.remove('selected'));
     }
+    updateCaptured();
+    updateStatus();
+  }
 
-    if (t === 'FU') {
-      addStep(dir,0);
-    } else if (t === 'KY') {
-      addSlide(dir,0);
-    } else if (t === 'KE') {
-      addStep(dir*2,-1);
-      addStep(dir*2,1);
-    } else if (t === 'GI') {
-      const ds = [
-        {dr:dir,dc:0},
-        {dr:dir,dc:-1},
-        {dr:dir,dc:1},
-        {dr:-dir,dc:-1},
-        {dr:-dir,dc:1}
+  function updateCaptured(){
+    playerCapEl.innerHTML='';
+    enemyCapEl.innerHTML='';
+    playerCaptured.forEach((p,i)=>{
+      const el=document.createElement('div');
+      el.className='cap-piece';
+      el.dataset.owner='P';
+      el.dataset.index=i;
+      el.textContent=PIECE_CHARS[p.type];
+      playerCapEl.appendChild(el);
+    });
+    enemyCaptured.forEach((p,i)=>{
+      const el=document.createElement('div');
+      el.className='cap-piece';
+      el.dataset.owner='E';
+      el.dataset.index=i;
+      el.textContent=PIECE_CHARS[p.type];
+      enemyCapEl.appendChild(el);
+    });
+  }
+
+  function updateStatus(){
+    turnLabel.textContent = currentPlayer==='P'?'あなたの手番':'相手の手番';
+    statusEl.textContent = '王：あなた / 玉：相手';
+  }
+
+  function inBounds(x,y){return x>=0 && x<9 && y>=0 && y<9;}
+
+  function isPromotionZone(owner,y){
+    return owner==='P' ? y<=2 : y>=6;
+  }
+
+  function cloneBoardState(){
+    return {
+      board: board.map(row=>row.map(p=>p?{...p}:null)),
+      playerCaptured: playerCaptured.map(p=>({...p})),
+      enemyCaptured: enemyCaptured.map(p=>({...p})),
+      currentPlayer
+    };
+  }
+
+  function restoreBoardState(state){
+    board = state.board.map(row=>row.map(p=>p?{...p}:null));
+    playerCaptured = state.playerCaptured.map(p=>({...p}));
+    enemyCaptured = state.enemyCaptured.map(p=>({...p}));
+    currentPlayer = state.currentPlayer;
+  }
+
+  function getMovesForPiece(x,y){
+    const piece = board[y][x];
+    if(!piece) return [];
+    const dir = piece.owner==='P' ? -1 : 1;
+    const moves=[];
+    const addStep=(dx,dy,repeat=false)=>{
+      let nx=x+dx, ny=y+dy;
+      while(inBounds(nx,ny)){
+        const target=board[ny][nx];
+        if(target && target.owner===piece.owner) break;
+        moves.push({x:nx,y:ny});
+        if(target && target.owner!==piece.owner) break;
+        if(!repeat) break;
+        nx+=dx; ny+=dy;
+      }
+    };
+    const t = piece.type;
+    const promoted = piece.promoted;
+    if(t==='FU' && !promoted){
+      addStep(0,dir);
+    }else if(t==='FU' && promoted || t==='KI' || t==='OU' && false){
+      // 金とと金系（簡略：金と同じ）
+      const goldSteps = [
+        {dx:0,dy:dir},{dx:-1,dy:dir},{dx:1,dy:dir},
+        {dx:-1,dy:0},{dx:1,dy:0},{dx:0,dy:-dir}
       ];
-      ds.forEach(d=>addStep(d.dr,d.dc));
-    } else if (t === 'KI' || t === 'OU' || t === 'GY') {
-      if (t === 'KI') {
-        goldLikeDirs(owner).forEach(d=>addStep(d.dr,d.dc));
-      } else {
-        for (let dr=-1; dr<=1; dr++) {
-          for (let dc=-1; dc<=1; dc++) {
-            if (dr===0 && dc===0) continue;
-            addStep(dr,dc);
-          }
-        }
-      }
-    } else if (t === 'KA') {
-      if (!promoted) {
-        [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(d=>addSlide(d[0],d[1]));
-      } else {
-        [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(d=>addSlide(d[0],d[1]));
-        for (let dr=-1; dr<=1; dr++) {
-          for (let dc=-1; dc<=1; dc++) {
-            if (Math.abs(dr)+Math.abs(dc) !== 1) continue;
-            addStep(dr,dc);
-          }
-        }
-      }
-    } else if (t === 'HI') {
-      if (!promoted) {
-        [[1,0],[-1,0],[0,1],[0,-1]].forEach(d=>addSlide(d[0],d[1]));
-      } else {
-        [[1,0],[-1,0],[0,1],[0,-1]].forEach(d=>addSlide(d[0],d[1]));
-        [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(d=>addStep(d[0],d[1]));
+      goldSteps.forEach(s=>addStep(s.dx,s.dy));
+    }
+    if(t==='KY' && !promoted){
+      addStep(0,dir,true);
+    }else if(t==='KY' && promoted){
+      const goldSteps = [
+        {dx:0,dy:dir},{dx:-1,dy:dir},{dx:1,dy:dir},
+        {dx:-1,dy:0},{dx:1,dy:0},{dx:0,dy:-dir}
+      ];
+      goldSteps.forEach(s=>addStep(s.dx,s.dy));
+    }
+    if(t==='KE' && !promoted){
+      const steps = [
+        {dx:-1,dy:2*dir},{dx:1,dy:2*dir}
+      ];
+      steps.forEach(s=>addStep(s.dx,s.dy));
+    }else if(t==='KE' && promoted){
+      const goldSteps = [
+        {dx:0,dy:dir},{dx:-1,dy:dir},{dx:1,dy:dir},
+        {dx:-1,dy:0},{dx:1,dy:0},{dx:0,dy:-dir}
+      ];
+      goldSteps.forEach(s=>addStep(s.dx,s.dy));
+    }
+    if(t==='GI' && !promoted){
+      const steps = [
+        {dx:0,dy:dir},{dx:-1,dy:dir},{dx:1,dy:dir},
+        {dx:-1,dy:-dir},{dx:1,dy:-dir}
+      ];
+      steps.forEach(s=>addStep(s.dx,s.dy));
+    }else if(t==='GI' && promoted){
+      const goldSteps = [
+        {dx:0,dy:dir},{dx:-1,dy:dir},{dx:1,dy:dir},
+        {dx:-1,dy:0},{dx:1,dy:0},{dx:0,dy:-dir}
+      ];
+      goldSteps.forEach(s=>addStep(s.dx,s.dy));
+    }
+    if(t==='KI'){
+      const goldSteps = [
+        {dx:0,dy:dir},{dx:-1,dy:dir},{dx:1,dy:dir},
+        {dx:-1,dy:0},{dx:1,dy:0},{dx:0,dy:-dir}
+      ];
+      goldSteps.forEach(s=>addStep(s.dx,s.dy));
+    }
+    if(t==='OU' || t==='GY'){
+      const steps = [
+        {dx:0,dy:1},{dx:0,dy:-1},{dx:1,dy:0},{dx:-1,dy:0},
+        {dx:1,dy:1},{dx:-1,dy:1},{dx:1,dy:-1},{dx:-1,dy:-1}
+      ];
+      steps.forEach(s=>addStep(s.dx,s.dy));
+    }
+    if(t==='KA'){
+      addStep(1,1,true);addStep(-1,1,true);addStep(1,-1,true);addStep(-1,-1,true);
+      if(promoted){
+        addStep(0,1);addStep(0,-1);addStep(1,0);addStep(-1,0);
       }
     }
-    return res;
-  }
-
-  // --- 合法手生成 ---
-  function generateMoves(owner, b, hand) {
-    const moves = [];
-    // 盤上の駒
-    for (let r=0;r<SIZE;r++) {
-      for (let c=0;c<SIZE;c++) {
-        const piece = b[r][c];
-        if (!piece || piece.o !== owner) continue;
-        const list = movesForPiece(r,c,piece,b);
-        for (const m of list) {
-          const from = {r,c};
-          const to = {r:m.r,c:m.c};
-          const target = b[m.r][m.c];
-          let canPromote = false;
-          if (PROMOTABLE.includes(piece.t)) {
-            if (inZone(owner,r) || inZone(owner,m.r)) {
-              canPromote = true;
-            }
-          }
-          if (canPromote) {
-            moves.push({from,to,piece, promote:false, capture:target||null, drop:false});
-            moves.push({from,to,piece, promote:true, capture:target||null, drop:false});
-          } else {
-            moves.push({from,to,piece, promote:false, capture:target||null, drop:false});
-          }
-        }
-      }
-    }
-    // 持ち駒打ち（簡略：二歩や詰み禁止などは未実装）
-    const inside = (rr,cc)=> rr>=0 && rr<SIZE && cc>=0 && cc<SIZE;
-    for (const type in hand) {
-      const count = hand[type];
-      if (!count) continue;
-      for (let r=0;r<SIZE;r++) {
-        for (let c=0;c<SIZE;c++) {
-          if (b[r][c]) continue;
-          // 歩・香・桂の打てない段の簡易チェック
-          if (type === 'FU' || type === 'KY') {
-            if (owner === PLAYER && r === 0) continue;
-            if (owner === AI && r === SIZE-1) continue;
-          }
-          if (type === 'KE') {
-            if (owner === PLAYER && r <= 1) continue;
-            if (owner === AI && r >= SIZE-2) continue;
-          }
-          moves.push({
-            from:null,
-            to:{r,c},
-            piece:{t:type,o:owner,p:false},
-            promote:false,
-            capture:null,
-            drop:true
-          });
-        }
+    if(t==='HI'){
+      addStep(0,1,true);addStep(0,-1,true);addStep(1,0,true);addStep(-1,0,true);
+      if(promoted){
+        addStep(1,1);addStep(-1,1);addStep(1,-1);addStep(-1,-1);
       }
     }
     return moves;
   }
 
-  function applyMove(b, move, myH, aiH) {
-    const nb = cloneBoard(b);
-    const myHandCopy = {...myH};
-    const aiHandCopy = {...aiH};
-    const owner = move.piece.o;
-    if (move.drop) {
-      nb[move.to.r][move.to.c] = {t:move.piece.t,o:owner,p:false};
-      if (owner === PLAYER) removeFromHand(myHandCopy, move.piece.t);
-      else removeFromHand(aiHandCopy, move.piece.t);
-    } else {
-      const fromPiece = nb[move.from.r][move.from.c];
-      nb[move.from.r][move.from.c] = null;
-      if (move.capture) {
-        const captured = move.capture;
-        const base = captured.t.replace('+','');
-        const handOwner = owner;
-        if (handOwner === PLAYER) addToHand(myHandCopy, base);
-        else addToHand(aiHandCopy, base);
-      }
-      const newPiece = {...fromPiece};
-      if (move.promote) newPiece.p = true;
-      nb[move.to.r][move.to.c] = newPiece;
-    }
-    return {board:nb, myHand:myHandCopy, aiHand:aiHandCopy};
-  }
-
-  function findKing(owner, b) {
-    for (let r=0;r<SIZE;r++) {
-      for (let c=0;c<SIZE;c++) {
-        const p = b[r][c];
-        if (!p) continue;
-        if (owner === PLAYER && p.t === 'OU' && p.o === PLAYER) return {r,c};
-        if (owner === AI && p.t === 'GY' && p.o === AI) return {r,c};
+  function getAllMoves(owner){
+    const moves=[];
+    for(let y=0;y<9;y++){
+      for(let x=0;x<9;x++){
+        const p=board[y][x];
+        if(p && p.owner===owner){
+          const list=getMovesForPiece(x,y);
+          list.forEach(m=>{
+            moves.push({from:{x,y},to:m,piece:p});
+          });
+        }
       }
     }
-    return null;
+    // drops
+    const caps = owner==='P'?playerCaptured:enemyCaptured;
+    caps.forEach((p,idx)=>{
+      for(let y=0;y<9;y++){
+        for(let x=0;x<9;x++){
+          if(!board[y][x]){
+            // 簡略：二歩などの禁じ手は無視
+            moves.push({drop:true,dropIndex:idx,dropPiece:p,to:{x,y}});
+          }
+        }
+      }
+    });
+    return moves;
   }
 
-  function isInCheck(owner, b) {
-    const kingPos = findKing(owner,b);
-    if (!kingPos) return true;
-    const enemy = owner === PLAYER ? AI : PLAYER;
-    const moves = generateMoves(enemy,b, enemy===PLAYER?myHand:aiHand);
-    return moves.some(m => m.to.r === kingPos.r && m.to.c === kingPos.c);
+  function applyMove(move){
+    if(move.drop){
+      const owner = currentPlayer;
+      const caps = owner==='P'?playerCaptured:enemyCaptured;
+      const p = caps.splice(move.dropIndex,1)[0];
+      board[move.to.y][move.to.x]={owner,type:p.type,promoted:false};
+      return {captured:null,from:null,to:move.to,piece:board[move.to.y][move.to.x],drop:true};
+    }else{
+      const fromPiece = board[move.from.y][move.from.x];
+      const target = board[move.to.y][move.to.x];
+      let captured=null;
+      if(target){
+        captured={...target,promoted:false};
+        if(target.owner==='P') enemyCaptured.push(captured);
+        else playerCaptured.push(captured);
+      }
+      board[move.to.y][move.to.x]=fromPiece;
+      board[move.from.y][move.from.x]=null;
+      // auto promotion when entering enemy zone (except king/gold)
+      if(!fromPiece.promoted && !['KI','OU','GY'].includes(fromPiece.type)){
+        if(isPromotionZone(fromPiece.owner,move.to.y)){
+          fromPiece.promoted=true;
+        }
+      }
+      return {captured,from:move.from,to:move.to,piece:fromPiece,drop:false};
+    }
   }
 
-  function filterLegal(owner, moves, b, myH, aiH) {
-    return moves.filter(m => {
-      const {board:nb,myHand:mh,aiHand:ah} = applyMove(b,m,myH,aiH);
-      return !isInCheck(owner, nb);
+  function isKingCaptured(owner){
+    for(let y=0;y<9;y++){
+      for(let x=0;x<9;x++){
+        const p=board[y][x];
+        if(p && p.owner===owner && (p.type==='OU' || p.type==='GY')) return false;
+      }
+    }
+    return true;
+  }
+
+  function showResult(win){
+    gameOver=true;
+    resultText.textContent = win?'勝利！':'敗北…';
+    resultSub.textContent = win?'お見事です。':'また挑戦してみましょう。';
+    overlay.classList.add('show');
+  }
+
+  function showMoveName(pieceType,owner){
+    const name = MOVE_NAMES[pieceType] || '手';
+    const prefix = owner==='P'?'あなたの':'相手の';
+    const text = prefix + name;
+    toastEl.textContent=text;
+    toastEl.style.opacity=1;
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>{toastEl.style.opacity=0;},2500);
+  }
+
+  function clearHighlights(){
+    document.querySelectorAll('.square').forEach(s=>s.classList.remove('highlight'));
+  }
+
+  function highlightMoves(x,y){
+    if(!highlightToggle.checked) return;
+    clearHighlights();
+    const moves=getMovesForPiece(x,y);
+    moves.forEach(m=>{
+      const idx=m.y*9+m.x;
+      const sq=boardEl.children[idx];
+      if(sq) sq.classList.add('highlight');
     });
   }
 
-  // --- 描画 ---
-  function renderBoard() {
-    boardEl.innerHTML = '';
-    for (let r=0;r<SIZE;r++) {
-      for (let c=0;c<SIZE;c++) {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.dataset.r = r;
-        cell.dataset.c = c;
-        if (highlightOn && legalMoves.some(m => m.to && m.to.r===r && m.to.c===c)) {
-          cell.classList.add('highlight');
-        }
-        const piece = board[r][c];
-        if (piece) {
-          const div = document.createElement('div');
-          div.className = 'piece ' + (piece.o===PLAYER?'my':'ai') + (piece.p?' promoted':'');
-          div.textContent = pieceLabel(piece);
-          cell.appendChild(div);
-        }
-        cell.addEventListener('click', onCellClick);
-        boardEl.appendChild(cell);
+  function handleSquareClick(x,y){
+    if(gameOver || currentPlayer!=='P') return;
+    const piece = board[y][x];
+    if(selected && selected.drop){
+      // drop selected captured piece
+      if(!piece){
+        const caps = playerCaptured;
+        const cap = caps[selectedCapIndex];
+        if(!cap) return;
+        // 簡略：二歩などはチェックしない
+        board[y][x]={owner:'P',type:cap.type,promoted:false};
+        caps.splice(selectedCapIndex,1);
+        showMoveName(cap.type,'P');
+        selected=null;
+        selectedCapIndex=null;
+        clearHighlights();
+        renderBoard();
+        endTurn();
       }
-    }
-    renderHands();
-    turnIndicator.textContent = turn === PLAYER ? 'あなたの手番' : '相手の手番';
-  }
-
-  function renderHands() {
-    myHandEl.innerHTML = '';
-    aiHandEl.innerHTML = '';
-    for (const [t,count] of Object.entries(myHand)) {
-      if (!count) continue;
-      const div = document.createElement('div');
-      div.className = 'hand-piece my';
-      div.dataset.owner = PLAYER;
-      div.dataset.type = t;
-      div.textContent = PIECES[t] + '×' + count;
-      if (selected && selected.hand && selected.owner===PLAYER && selected.type===t) {
-        div.classList.add('selected');
-      }
-      div.addEventListener('click', onHandClick);
-      myHandEl.appendChild(div);
-    }
-    for (const [t,count] of Object.entries(aiHand)) {
-      if (!count) continue;
-      const div = document.createElement('div');
-      div.className = 'hand-piece ai';
-      div.dataset.owner = AI;
-      div.dataset.type = t;
-      div.textContent = PIECES[t] + '×' + count;
-      aiHandEl.appendChild(div);
-    }
-  }
-
-  // --- 入力 ---
-  function onCellClick(e) {
-    if (gameOver || turn !== PLAYER) return;
-    const r = parseInt(e.currentTarget.dataset.r,10);
-    const c = parseInt(e.currentTarget.dataset.c,10);
-    const piece = board[r][c];
-
-    // 既に選択中で、そのマスが合法手なら移動
-    const move = legalMoves.find(m => m.to && m.to.r===r && m.to.c===c);
-    if (selected && move) {
-      doPlayerMove(move);
       return;
     }
-
-    // 新しく選択
-    if (piece && piece.o === PLAYER) {
-      selected = {r,c};
-      const all = generateMoves(PLAYER, board, myHand);
-      legalMoves = filterLegal(PLAYER, all.filter(m => m.from && m.from.r===r && m.from.c===c), board, myHand, aiHand);
-    } else {
-      // 何も選択しない
-      selected = null;
-      legalMoves = [];
+    if(piece && piece.owner==='P'){
+      if(selected && !selected.drop && selected.x===x && selected.y===y){
+        selected=null;
+        clearHighlights();
+      }else{
+        selected={x,y};
+        clearHighlights();
+        highlightMoves(x,y);
+      }
+      renderBoard();
+    }else if(selected && !selected.drop){
+      const fromPiece = board[selected.y][selected.x];
+      const moves=getMovesForPiece(selected.x,selected.y);
+      if(moves.some(m=>m.x===x && m.y===y)){
+        const target=board[y][x];
+        if(target && target.owner==='P') return;
+        const move={from:{x:selected.x,y:selected.y},to:{x,y},piece:fromPiece};
+        applyMove(move);
+        showMoveName(fromPiece.type,'P');
+        selected=null;
+        clearHighlights();
+        renderBoard();
+        endTurn();
+      }
     }
+  }
+
+  function handleCapturedClick(owner,index){
+    if(gameOver || currentPlayer!=='P') return;
+    if(owner!=='P') return;
+    selected={drop:true};
+    selectedCapIndex=index;
+    clearHighlights();
     renderBoard();
   }
 
-  function onHandClick(e) {
-    if (gameOver || turn !== PLAYER) return;
-    const owner = e.currentTarget.dataset.owner;
-    if (owner !== PLAYER) return;
-    const type = e.currentTarget.dataset.type;
-    if (selected && selected.hand && selected.type === type) {
-      selected = null;
-      legalMoves = [];
-    } else {
-      selected = {hand:true, owner:PLAYER, type};
-      const all = generateMoves(PLAYER, board, myHand);
-      legalMoves = filterLegal(PLAYER, all.filter(m => m.drop && m.piece.t===type), board, myHand, aiHand);
-    }
-    renderBoard();
-  }
-
-  function doPlayerMove(move) {
-    const res = applyMove(board, move, myHand, aiHand);
-    board = res.board;
-    myHand = res.myHand;
-    aiHand = res.aiHand;
-    selected = null;
-    legalMoves = [];
-    renderBoard();
-    if (checkEnd()) return;
-    turn = AI;
-    renderBoard();
-    setTimeout(aiTurn, 300);
-  }
-
-  // --- AI ---
-  function aiTurn() {
-    if (gameOver) return;
-    const all = generateMoves(AI, board, aiHand);
-    const legal = filterLegal(AI, all, board, myHand, aiHand);
-    if (legal.length === 0) {
-      endGame('win', '相手に手がありません。あなたの勝ちです。');
+  function aiMove(){
+    if(gameOver) return;
+    const difficulty = parseInt(diffInput.value,10);
+    const moves = getAllMoves('E');
+    if(moves.length===0){
+      showResult(true);
       return;
     }
-
-    const scored = legal.map(m => {
-      let score = 0;
-      if (m.capture) {
-        const val = pieceValue(m.capture.t);
-        score += val * 2;
+    // simple scoring
+    function scoreMove(m){
+      let s=0;
+      if(m.drop){
+        // prefer drops near player side
+        s += (8-m.to.y)*0.5;
+      }else{
+        const target = m.to && board[m.to.y][m.to.x];
+        if(target && target.owner==='P'){
+          const val = {FU:1,KY:3,KE:3,GI:4,KI:5,KA:8,HI:9,OU:100,GY:100}[target.type]||1;
+          s += val*3;
+        }
+        // advance towards player
+        s += (m.from.y - m.to.y)*0.3;
       }
-      if (m.promote) score += 3;
-      const sim = applyMove(board,m,myHand,aiHand);
-      if (isInCheck(PLAYER, sim.board)) score += 5;
-      if (isInCheck(AI, sim.board)) score -= 8;
-      return {m, score};
-    });
-
-    scored.sort((a,b)=>b.score - a.score);
-
-    const randomness = (11 - difficulty) * 0.15; // 難易度高いほどランダム性減少
-    let idx = 0;
-    if (randomness > 0) {
-      const maxRange = Math.max(1, Math.floor(scored.length * randomness));
-      idx = Math.floor(Math.random() * maxRange);
+      // random noise
+      s += Math.random()* (difficulty/10);
+      return s;
     }
-    const chosen = scored[Math.min(idx, scored.length-1)].m;
+    // simulate on copy to avoid using updated board mid-loop
+    const scored = moves.map(m=>({m,score:scoreMove(m)}));
+    scored.sort((a,b)=>b.score-a.score);
+    const topN = Math.max(1,Math.floor(1 + (11-difficulty))); // 高難度ほど候補少なく
+    const choice = scored[Math.floor(Math.random()*Math.min(topN,scored.length))].m;
 
-    const moveName = describeMove(chosen);
-    showToast(moveName);
-
-    const res = applyMove(board, chosen, myHand, aiHand);
-    board = res.board;
-    myHand = res.myHand;
-    aiHand = res.aiHand;
+    // apply on real board
+    const result = applyMove(choice);
+    const pType = choice.drop ? choice.dropPiece.type : choice.piece.type;
+    showMoveName(pType,'E');
     renderBoard();
-    if (checkEnd()) return;
-    turn = PLAYER;
-    renderBoard();
-  }
 
-  function pieceValue(t) {
-    const base = t.replace('+','');
-    if (base === 'FU') return 1;
-    if (base === 'KY') return 2;
-    if (base === 'KE') return 3;
-    if (base === 'GI') return 4;
-    if (base === 'KI') return 5;
-    if (base === 'KA') return 7;
-    if (base === 'HI') return 8;
-    if (base === 'OU' || base === 'GY') return 100;
-    return 1;
-  }
-
-  function describeMove(m) {
-    if (m.drop) {
-      if (m.piece.t === 'FU') return '歩の打ち';
-      if (m.piece.t === 'HI') return '飛車の打ち';
-      if (m.piece.t === 'KA') return '角の打ち';
-      return PIECES[m.piece.t] + 'の打ち';
+    if(isKingCaptured('P')){
+      showResult(false);
+      return;
     }
-    if (m.capture && m.promote) return '成り込みの取り';
-    if (m.capture) return '駒取り';
-    if (m.promote) return '成り';
-    const sim = applyMove(board,m,myHand,aiHand);
-    if (isInCheck(PLAYER, sim.board)) return '王手';
-    return '手筋の一手';
+    currentPlayer='P';
+    updateStatus();
   }
 
-  // --- トースト ---
-  function showToast(text) {
-    toastEl.textContent = '相手の手: ' + text;
-    toastEl.classList.add('show');
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      toastEl.classList.remove('show');
-    }, 2000);
-  }
-
-  // --- 勝敗判定 ---
-  function checkEnd() {
-    const myKing = findKing(PLAYER, board);
-    const aiKing = findKing(AI, board);
-    if (!myKing) {
-      endGame('lose', 'あなたの王が取られました。');
-      return true;
+  function endTurn(){
+    if(isKingCaptured('E')){
+      showResult(true);
+      return;
     }
-    if (!aiKing) {
-      endGame('win', '相手の玉を取りました。');
-      return true;
-    }
-    // 簡易：手がない場合は負け
-    if (turn === PLAYER) {
-      const moves = filterLegal(PLAYER, generateMoves(PLAYER, board, myHand), board, myHand, aiHand);
-      if (moves.length === 0) {
-        endGame('lose', 'あなたに指せる手がありません。');
-        return true;
-      }
-    } else {
-      const moves = filterLegal(AI, generateMoves(AI, board, aiHand), board, myHand, aiHand);
-      if (moves.length === 0) {
-        endGame('win', '相手に指せる手がありません。');
-        return true;
-      }
-    }
-    return false;
+    currentPlayer='E';
+    updateStatus();
+    setTimeout(aiMove,400 + (11-parseInt(diffInput.value,10))*40);
   }
 
-  function endGame(result, msg) {
-    gameOver = true;
-    resultTitle.textContent = result === 'win' ? '勝利！' : '敗北…';
-    resultText.textContent = msg;
-    resultOverlay.classList.add('show');
-  }
-
-  function resetGame() {
-    board = initialBoard();
-    myHand = {};
-    aiHand = {};
-    selected = null;
-    legalMoves = [];
-    turn = PLAYER;
-    gameOver = false;
-    resultOverlay.classList.remove('show');
-    renderBoard();
-  }
-
-  // --- UIイベント ---
-  document.getElementById('difficulty').addEventListener('input', e => {
-    difficulty = parseInt(e.target.value,10);
-    document.getElementById('difficultyValue').textContent = difficulty;
+  boardEl.addEventListener('click',e=>{
+    const sq = e.target.closest('.square');
+    const pieceEl = e.target.closest('.piece');
+    if(!sq && !pieceEl) return;
+    const x = parseInt((pieceEl||sq).dataset.x,10);
+    const y = parseInt((pieceEl||sq).dataset.y,10);
+    handleSquareClick(x,y);
   });
 
-  document.getElementById('highlightToggle').addEventListener('change', e => {
-    highlightOn = e.target.checked;
+  playerCapEl.addEventListener('click',e=>{
+    const cap = e.target.closest('.cap-piece');
+    if(!cap) return;
+    handleCapturedClick(cap.dataset.owner,parseInt(cap.dataset.index,10));
+  });
+
+  enemyCapEl.addEventListener('click',()=>{ /* no-op */ });
+
+  diffInput.addEventListener('input',()=>{
+    diffLabel.textContent=diffInput.value;
+  });
+
+  restartBtn.addEventListener('click',()=>{
+    overlay.classList.remove('show');
+    gameOver=false;
+    playerCaptured=[];
+    enemyCaptured=[];
+    currentPlayer='P';
+    selected=null;
+    selectedCapIndex=null;
+    clearHighlights();
+    initBoard();
     renderBoard();
   });
 
-  document.getElementById('resetBtn').addEventListener('click', resetGame);
-  document.getElementById('againBtn').addEventListener('click', resetGame);
-
-  // 初期描画
+  // 初期化
+  initBoard();
   renderBoard();
+})();
 </script>
 </body>
 </html>
