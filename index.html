@@ -1,996 +1,813 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <title>シンプル将棋</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  :root {
-    --board-bg: #f3e1c5;
-    --cell-border: #b48b5a;
-    --cell-highlight: #ffe88a;
-    --cell-select: #ffcc66;
-    --cell-move: #a4d4ff;
-    --piece-player: #222;
-    --piece-ai: #b30000;
-    --banner-bg: rgba(0,0,0,0.75);
-  }
-  * { box-sizing: border-box; }
   body {
-    margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: #f7f2e9;
+    font-family: system-ui, sans-serif;
     display: flex;
-    justify-content: center;
-  }
-  .wrapper {
-    width: 100%;
-    max-width: 520px;
-    padding: 10px;
-  }
-  .top-bar {
-    position: relative;
-    margin-bottom: 8px;
-  }
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    flex-direction: column;
     align-items: center;
-    font-size: 12px;
+    margin: 20px;
+    background: #f5f5f5;
   }
-  .controls label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+  h1 {
+    margin-bottom: 10px;
   }
-  select, input[type="checkbox"] {
-    accent-color: #c48a3a;
+  #controls {
+    margin-bottom: 10px;
   }
-  .move-banner {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: -32px;
-    margin: 0 auto;
-    max-width: 520px;
-    text-align: center;
-    font-size: 13px;
-    padding: 4px 8px;
-    background: rgba(0,0,0,0.75);
-    color: #fff;
-    border-radius: 4px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s;
+  #controls label {
+    margin-right: 8px;
   }
-  .move-banner.show {
-    opacity: 1;
+  #info {
+    margin: 8px 0;
   }
-
-
-  .board-container {
-    background: var(--board-bg);
-    border-radius: 8px;
-    padding: 6px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  }
-  .board {
+  #board {
     display: grid;
-    grid-template-columns: repeat(9, 1fr);
-    gap: 1px;
-    background: var(--cell-border);
+    grid-template-columns: repeat(9, 60px);
+    grid-template-rows: repeat(9, 60px);
+    border: 3px solid #333;
+    background: #d9b26c;
   }
-  .cell {
-    background: var(--board-bg);
-    aspect-ratio: 1 / 1;
-    position: relative;
+  .square {
+    width: 60px;
+    height: 60px;
+    box-sizing: border-box;
+    border: 1px solid #b58b4a;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: clamp(14px, 3.5vw, 20px);
+    position: relative;
     cursor: pointer;
-    user-select: none;
-    transition: background 0.15s;
   }
-  .cell.selected {
-    background: var(--cell-select);
+  .square:nth-child(odd) {
+    /* all squares same size; color subtle variation */
+    background: #e0c07a;
   }
-  .cell.move-target {
-    background: var(--cell-move);
-  }
-
-
   .piece {
-    width: 80%;
-    height: 80%;
-    border-radius: 6px;
-    border: 1px solid #8b6a3b;
+    width: 46px;
+    height: 46px;
+    border-radius: 4px;
+    background: #fdf5dd;
+    border: 1px solid #444;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    background: #fdf7e7;
-    position: relative;
+    font-size: 22px;
+    font-weight: bold;
+    box-sizing: border-box;
   }
-  .piece.player {
-    color: var(--piece-player);
+  .black .piece {
+    transform: rotate(0deg);
   }
-  .piece.ai {
-    color: var(--piece-ai);
+  .white .piece {
     transform: rotate(180deg);
   }
-  .piece.promoted::after {
-    content: "成";
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    font-size: 9px;
-    color: #d40000;
+  .promoted {
+    color: #c00;
   }
-
-
-  .captured-area {
+  .highlight {
+    box-shadow: inset 0 0 0 3px rgba(0, 150, 255, 0.7);
+  }
+  .selected {
+    box-shadow: 0 0 0 3px rgba(0, 200, 0, 0.8);
+  }
+  #hands {
     display: flex;
     justify-content: space-between;
-    margin-top: 6px;
-    gap: 4px;
-    font-size: 11px;
+    width: 540px;
+    margin-top: 10px;
   }
-  .captured-box {
-    flex: 1;
-    background: #f9f0dd;
-    border-radius: 6px;
-    padding: 4px;
-    min-height: 40px;
+  .hand {
     display: flex;
     flex-wrap: wrap;
-    gap: 2px;
+    min-height: 40px;
+    padding: 4px;
+    border: 1px solid #aaa;
+    background: #fff;
+    width: 48%;
   }
-  .captured-label {
-    font-size: 11px;
-    margin-bottom: 2px;
-  }
-  .captured-piece {
-    width: 22px;
-    height: 22px;
-    border-radius: 4px;
-    border: 1px solid #8b6a3b;
-    background: #fff7e0;
+  .hand-piece {
+    width: 32px;
+    height: 32px;
+    margin: 2px;
+    border-radius: 3px;
+    background: #fdf5dd;
+    border: 1px solid #444;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: 16px;
     cursor: pointer;
   }
-  .captured-piece.selected {
-    outline: 2px solid #ff9933;
+  .hand-piece.selected {
+    outline: 2px solid #0a0;
   }
-
-
-  .status-bar {
-    margin-top: 6px;
-    font-size: 12px;
-    display: flex;
-    justify-content: space-between;
-  }
-
-
-  .result-overlay {
-    position: fixed;
-    inset: 0;
-    background: var(--banner-bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 20;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.4s;
-  }
-  .result-overlay.show {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  .result-box {
-    background: #fdf7e7;
-    border-radius: 10px;
-    padding: 20px 24px;
-    text-align: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    animation: pop 0.4s ease-out;
-  }
-  .result-title {
-    font-size: 22px;
-    margin-bottom: 8px;
-  }
-  .result-title.win {
-    color: #1a8f2b;
-  }
-  .result-title.lose {
-    color: #c00000;
-  }
-  .result-btn {
-    margin-top: 10px;
-    padding: 6px 14px;
-    border-radius: 999px;
-    border: none;
-    background: #c48a3a;
-    color: #fff;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  @keyframes pop {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+  #message {
+    margin-top: 8px;
+    min-height: 20px;
+    color: #333;
   }
 </style>
 </head>
 <body>
-<div class="wrapper">
-  <div class="top-bar">
-    <div id="moveBanner" class="move-banner"></div>
-    <div class="controls">
-      <label>
-        難易度
-        <select id="difficulty">
-  <option value="1">1</option>
-  <option value="2">2</option>
-  <option value="3" selected>3</option>
-  <option value="4">4</option>
-  <option value="5">5</option>
-  <option value="6">6</option>
-  <option value="7">7</option>
-  <option value="8">8</option>
-  <option value="9">9</option>
-  <option value="10">10</option>
-</select>
-
-
-      </label>
-      <label>
-        <input type="checkbox" id="highlightToggle" checked>
-        駒のいける方向
-      </label>
-    </div>
+<h1>シンプル将棋（人間：先手 / AI：後手）</h1>
+<div id="controls">
+  <label>難易度:
+    <input type="range" id="difficulty" min="1" max="10" value="4">
+  </label>
+  <span id="difficultyValue">4</span>
+</div>
+<div id="info">手番: 先手（あなた）</div>
+<div id="board"></div>
+<div id="hands">
+  <div>
+    <div>先手の持ち駒</div>
+    <div id="blackHand" class="hand"></div>
   </div>
-
-
-  <div class="board-container">
-    <div id="board" class="board"></div>
-    <div class="captured-area">
-      <div style="flex:1;">
-        <div class="captured-label">あなたの持ち駒</div>
-        <div id="playerCaptured" class="captured-box"></div>
-      </div>
-      <div style="flex:1;">
-        <div class="captured-label">相手の持ち駒</div>
-        <div id="aiCaptured" class="captured-box"></div>
-      </div>
-    </div>
-    <div class="status-bar">
-      <div id="turnLabel">手番：あなた</div>
-      <div id="infoLabel"></div>
-    </div>
+  <div>
+    <div>後手の持ち駒（AI）</div>
+    <div id="whiteHand" class="hand"></div>
   </div>
 </div>
-
-
-<div id="resultOverlay" class="result-overlay">
-  <div class="result-box">
-    <div id="resultTitle" class="result-title"></div>
-    <div id="resultText" style="font-size:13px;"></div>
-    <button class="result-btn" id="restartBtn">もう一度</button>
-  </div>
-</div>
-
+<div id="message"></div>
 
 <script>
-  const boardEl = document.getElementById('board');
-  const playerCapturedEl = document.getElementById('playerCaptured');
-  const aiCapturedEl = document.getElementById('aiCaptured');
-  const turnLabel = document.getElementById('turnLabel');
-  const infoLabel = document.getElementById('infoLabel');
-  const difficultyEl = document.getElementById('difficulty');
-  const highlightToggle = document.getElementById('highlightToggle');
-  const moveBanner = document.getElementById('moveBanner');
-  const resultOverlay = document.getElementById('resultOverlay');
-  const resultTitle = document.getElementById('resultTitle');
-  const resultText = document.getElementById('resultText');
-  const restartBtn = document.getElementById('restartBtn');
+/*
+  シンプル将棋ロジック
+  - 9x9 正方形グリッド
+  - 先手：上から下へ、後手：下から上へ
+  - 王と玉を分ける（先手：王、後手：玉）
+  - 持ち駒・打ち駒対応
+  - 二歩禁止
+  - 合法手のみ（自玉放置禁止）
+  - 行けるマスをハイライト
+  - AIは難易度に応じて先読み（ミニマックス＋簡易評価）
+*/
 
+const boardEl = document.getElementById('board');
+const infoEl = document.getElementById('info');
+const msgEl = document.getElementById('message');
+const blackHandEl = document.getElementById('blackHand');
+const whiteHandEl = document.getElementById('whiteHand');
+const diffSlider = document.getElementById('difficulty');
+const diffValue = document.getElementById('difficultyValue');
 
-  const PIECE_CHARS = {
-    FU: "歩", KY: "香", KE: "桂", GI: "銀", KI: "金",
-    OU: "玉", GY: "王", KA: "角", HI: "飛",
-    TO: "と", NY: "杏", NK: "圭", NG: "全", UM: "馬", RY: "龍"
+diffSlider.addEventListener('input', () => {
+  diffValue.textContent = diffSlider.value;
+});
+
+const SIZE = 9;
+
+// piece.type: 'P','L','N','S','G','B','R','K'
+// piece.color: 'b' or 'w'
+// piece.promoted: boolean
+let board = [];
+let hands = {
+  b: {}, // type -> count
+  w: {}
+};
+let currentTurn = 'b'; // 'b' (先手) or 'w' (後手)
+let selected = null; // {from:{r,c}, piece} or {drop:true, color, type}
+let highlights = [];
+let gameOver = false;
+
+// 初期配置
+function initBoard() {
+  board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+  hands.b = {};
+  hands.w = {};
+  currentTurn = 'b';
+  gameOver = false;
+  selected = null;
+  highlights = [];
+
+  // 先手（上側）
+  // 9段目（index 0）: 香 桂 銀 金 王 金 銀 桂 香
+  const topBack = ['L','N','S','G','K','G','S','N','L'];
+  for (let c = 0; c < SIZE; c++) {
+    board[0][c] = makePiece(topBack[c], 'b', false);
+  }
+  // 8段目（index 1）: 角, 飛
+  board[1][1] = makePiece('B', 'b', false); // 左に角
+  board[1][7] = makePiece('R', 'b', false); // 右に飛
+  // 7段目（index 2）: 歩
+  for (let c = 0; c < SIZE; c++) {
+    board[2][c] = makePiece('P', 'b', false);
+  }
+
+  // 後手（下側）
+  const bottomBack = ['L','N','S','G','K','G','S','N','L'];
+  for (let c = 0; c < SIZE; c++) {
+    board[8][c] = makePiece(bottomBack[c], 'w', false);
+  }
+  board[7][7] = makePiece('B', 'w', false); // 左（後手から見て）に角 → 画面では右側
+  board[7][1] = makePiece('R', 'w', false); // 右（後手から見て）に飛 → 画面では左側
+  for (let c = 0; c < SIZE; c++) {
+    board[6][c] = makePiece('P', 'w', false);
+  }
+
+  render();
+  setMessage('ゲーム開始。あなたは先手です。');
+}
+
+function makePiece(type, color, promoted) {
+  return { type, color, promoted: !!promoted };
+}
+
+function render() {
+  boardEl.innerHTML = '';
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const sq = document.createElement('div');
+      sq.className = 'square';
+      sq.dataset.row = r;
+      sq.dataset.col = c;
+
+      const piece = board[r][c];
+      if (piece) {
+        const pEl = document.createElement('div');
+        pEl.className = 'piece ' + (piece.color === 'b' ? 'black' : 'white');
+        if (piece.promoted) pEl.classList.add('promoted');
+        pEl.textContent = pieceChar(piece);
+        sq.appendChild(pEl);
+      }
+
+      if (highlights.some(h => h.r === r && h.c === c)) {
+        sq.classList.add('highlight');
+      }
+      if (selected && selected.from && selected.from.r === r && selected.from.c === c) {
+        sq.classList.add('selected');
+      }
+
+      sq.addEventListener('click', onSquareClick);
+      boardEl.appendChild(sq);
+    }
+  }
+  renderHands();
+  infoEl.textContent = '手番: ' + (currentTurn === 'b' ? '先手（あなた）' : '後手（AI）');
+}
+
+function pieceChar(piece) {
+  const map = {
+    P: '歩',
+    L: '香',
+    N: '桂',
+    S: '銀',
+    G: '金',
+    B: '角',
+    R: '飛',
+    K: piece.color === 'b' ? '王' : '玉'
   };
+  if (!piece.promoted) return map[piece.type];
+  const promMap = {
+    P: 'と',
+    L: '成香',
+    N: '成桂',
+    S: '成銀',
+    B: '馬',
+    R: '龍'
+  };
+  if (piece.type === 'G' || piece.type === 'K') return map[piece.type];
+  return promMap[piece.type] || map[piece.type];
+}
 
-
-  let board = [];
-  let playerCaptured = [];
-  let aiCaptured = [];
-  let currentPlayer = 'P'; // P: player, E: enemy
-  let selected = null; // {x,y} or {drop:true, owner, type, index}
-  let legalMoves = [];
-  let bannerTimer = null;
-  let gameOver = false;
-
-
-  function initBoard() {
-    board = Array.from({length:9}, () => Array(9).fill(null));
-
-
-    function place(x,y,owner,type,promoted=false){
-      board[y][x] = {owner,type,promoted};
-    }
-
-
-    // あなた側（下）
-    place(0,8,'P','KY'); place(1,8,'P','KE'); place(2,8,'P','GI');
-    place(3,8,'P','KI'); place(4,8,'P','OU'); place(5,8,'P','KI');
-    place(6,8,'P','GI'); place(7,8,'P','KE'); place(8,8,'P','KY');
-    place(1,7,'P','KA'); // 角 左
-    place(7,7,'P','HI'); // 飛 右
-    for(let x=0;x<9;x++) place(x,6,'P','FU');
-
-
-    // 相手側（上）
-    place(0,0,'E','KY'); place(1,0,'E','KE'); place(2,0,'E','GI');
-    place(3,0,'E','KI'); place(4,0,'E','GY'); place(5,0,'E','KI');
-    place(6,0,'E','GI'); place(7,0,'E','KE'); place(8,0,'E','KY');
-    place(1,1,'E','HI');
-    place(7,1,'E','KA');
-    for(let x=0;x<9;x++) place(x,2,'E','FU');
-
-
-    playerCaptured = [];
-    aiCaptured = [];
-    currentPlayer = 'P';
-    selected = null;
-    legalMoves = [];
-    gameOver = false;
-    updateUI();
-  }
-
-
-  function renderBoard() {
-    boardEl.innerHTML = "";
-    for(let y=0;y<9;y++){
-      for(let x=0;x<9;x++){
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.dataset.x = x;
-        cell.dataset.y = y;
-
-
-        if(selected && !selected.drop && selected.x === x && selected.y === y){
-          cell.classList.add('selected');
+function renderHands() {
+  blackHandEl.innerHTML = '';
+  whiteHandEl.innerHTML = '';
+  ['b','w'].forEach(color => {
+    const handEl = color === 'b' ? blackHandEl : whiteHandEl;
+    const typesOrder = ['R','B','G','S','N','L','P'];
+    typesOrder.forEach(t => {
+      const count = hands[color][t] || 0;
+      for (let i = 0; i < count; i++) {
+        const hp = document.createElement('div');
+        hp.className = 'hand-piece';
+        hp.dataset.color = color;
+        hp.dataset.type = t;
+        hp.textContent = pieceChar({type:t,color, promoted:false});
+        if (selected && selected.drop && selected.color === color && selected.type === t && i === 0) {
+          hp.classList.add('selected');
         }
-        if(highlightToggle.checked){
-          if(legalMoves.some(m => m.to.x === x && m.to.y === y)){
-            cell.classList.add('move-target');
-          }
-        }
-
-
-        const piece = board[y][x];
-        if(piece){
-          const pEl = document.createElement('div');
-          pEl.className = 'piece ' + (piece.owner === 'P' ? 'player' : 'ai');
-          if(piece.promoted) pEl.classList.add('promoted');
-          pEl.textContent = getPieceChar(piece);
-          cell.appendChild(pEl);
-        }
-
-
-        cell.addEventListener('click', () => onCellClick(x,y));
-        boardEl.appendChild(cell);
+        hp.addEventListener('click', onHandPieceClick);
+        handEl.appendChild(hp);
       }
-    }
-  }
-
-
-  function renderCaptured() {
-    playerCapturedEl.innerHTML = "";
-    aiCapturedEl.innerHTML = "";
-
-
-    // あなたの持ち駒
-    playerCaptured.forEach((p, idx) => {
-      const el = document.createElement('div');
-      el.className = 'captured-piece';
-
-
-      if (selected && selected.drop && selected.owner === 'P' && selected.index === idx) {
-        el.classList.add('selected');
-      }
-
-
-      el.textContent = getPieceChar(p);
-
-
-      el.addEventListener('click', () => {
-        if (gameOver) return;
-        if (currentPlayer !== 'P') return;
-
-
-        if (selected && selected.drop && selected.owner === 'P' && selected.index === idx) {
-          selected = null;
-          legalMoves = [];
-        } else {
-          selected = { drop: true, owner: 'P', type: p.type, index: idx };
-          legalMoves = getDropMoves('P', p.type);
-        }
-        updateUI();
-      });
-
-
-      playerCapturedEl.appendChild(el);
     });
+  });
+}
 
+function onHandPieceClick(e) {
+  if (gameOver) return;
+  const color = e.currentTarget.dataset.color;
+  const type = e.currentTarget.dataset.type;
+  if (currentTurn !== color) return; // 自分の手番のみ
+  selected = { drop: true, color, type };
+  highlights = legalDrops(color, type);
+  render();
+}
 
-    // 相手の持ち駒（表示のみ）
-    aiCaptured.forEach((p) => {
-      const el = document.createElement('div');
-      el.className = 'captured-piece';
-      el.textContent = getPieceChar(p);
-      aiCapturedEl.appendChild(el);
-    });
-  }
+function onSquareClick(e) {
+  if (gameOver) return;
+  const r = parseInt(e.currentTarget.dataset.row, 10);
+  const c = parseInt(e.currentTarget.dataset.col, 10);
+  const piece = board[r][c];
 
+  if (currentTurn === 'w') return; // AIの手番中はクリック無効
 
-  function updateUI() {
-    renderBoard();
-    renderCaptured();
-    turnLabel.textContent = "手番：" + (currentPlayer==='P' ? "あなた" : "相手");
-  }
-
-
-  function getPieceChar(piece){
-    if(piece.promoted){
-      switch(piece.type){
-        case 'FU': return PIECE_CHARS.TO;
-        case 'KY': return PIECE_CHARS.NY;
-        case 'KE': return PIECE_CHARS.NK;
-        case 'GI': return PIECE_CHARS.NG;
-        case 'KA': return PIECE_CHARS.UM;
-        case 'HI': return PIECE_CHARS.RY;
-      }
-    }
-    return PIECE_CHARS[piece.type] || "?";
-  }
-
-
-  function onCellClick(x,y){
-    if(gameOver) return;
-    if(currentPlayer !== 'P') return;
-
-
-    const piece = board[y][x];
-
-
-    // 持ち駒を打つ
-    if(selected && selected.drop){
-      if(legalMoves.some(m => m.to.x===x && m.to.y===y)){
-        doDropMove(selected.owner, selected.type, x,y, selected.index);
-        selected = null;
-        legalMoves = [];
-        updateUI();
-        if(!gameOver) setTimeout(aiTurn, 200);
-      } else {
-        selected = null;
-        legalMoves = [];
-        updateUI();
-      }
-      return;
-    }
-
-
-    // 盤上の駒を動かす
-    if(selected && !selected.drop){
-      if(selected.x === x && selected.y === y){
-        selected = null;
-        legalMoves = [];
-        updateUI();
-        return;
-      }
-      const move = legalMoves.find(m => m.to.x===x && m.to.y===y);
-      if(move){
-        doMove(selected.x, selected.y, x, y, 'P');
-        selected = null;
-        legalMoves = [];
-        updateUI();
-        if(!gameOver){
-          setTimeout(aiTurn, 200);
-        }
-        return;
-      }
-    }
-
-
-    // 新しく選択
-    if(piece && piece.owner === 'P'){
-      selected = {x,y};
-      legalMoves = getLegalMovesForPiece(x,y,'P');
+  // すでに持ち駒選択中（打ち駒）
+  if (selected && selected.drop) {
+    const moves = highlights;
+    if (moves.some(m => m.r === r && m.c === c)) {
+      makeDropMove(currentTurn, selected.type, r, c);
+      afterHumanMove();
     } else {
       selected = null;
-      legalMoves = [];
+      highlights = [];
+      render();
     }
-    updateUI();
+    return;
   }
 
-
-  function inBounds(x,y){ return x>=0 && x<9 && y>=0 && y<9; }
-
-
-  function isPromotionZone(owner, y){
-    return owner==='P' ? (y<=2) : (y>=6);
+  // 何も選択していない → 自分の駒を選択
+  if (!selected) {
+    if (piece && piece.color === currentTurn) {
+      selected = { from: { r, c }, piece };
+      highlights = legalMovesFrom(r, c, piece);
+      render();
+    }
+    return;
   }
 
-
-  function canPromote(type){
-    return ['FU','KY','KE','GI','KA','HI'].includes(type);
-  }
-
-
-  function promoteIfNeeded(piece, fromY, toY){
-    if(!canPromote(piece.type)) return;
-    if(isPromotionZone(piece.owner, fromY) || isPromotionZone(piece.owner, toY)){
-      piece.promoted = true;
-    }
-  }
-
-
-  function getLegalMovesForPiece(x,y,owner){
-    const piece = board[y][x];
-    if(!piece || piece.owner!==owner) return [];
-    const moves = [];
-    const dir = owner==='P' ? -1 : 1;
-
-
-    function addStep(dx,dy){
-      const nx = x+dx, ny = y+dy;
-      if(!inBounds(nx,ny)) return;
-      const target = board[ny][nx];
-      if(!target || target.owner!==owner){
-        moves.push({from:{x,y}, to:{x:nx,y:ny}});
-      }
-    }
-    function addSlide(dx,dy){
-      let nx = x+dx, ny = y+dy;
-      while(inBounds(nx,ny)){
-        const target = board[ny][nx];
-        if(!target){
-          moves.push({from:{x,y}, to:{x:nx,y:ny}});
-        } else {
-          if(target.owner!==owner){
-            moves.push({from:{x,y}, to:{x:nx,y:ny}});
-          }
-          break;
-        }
-        nx+=dx; ny+=dy;
-      }
-    }
-
-
-    const t = piece.type;
-    const promoted = piece.promoted;
-
-
-    if(t==='FU' && !promoted){
-      addStep(0,dir);
-    } else if(t==='KY' && !promoted){
-      addSlide(0,dir);
-    } else if(t==='KE' && !promoted){
-      addStep(-1,2*dir);
-      addStep(1,2*dir);
-    } else if((t==='GI' && !promoted)){
-      addStep(0,dir);
-      addStep(-1,dir);
-      addStep(1,dir);
-      addStep(-1,-dir);
-      addStep(1,-dir);
-    } else if(t==='KI' || (t==='FU' && promoted) || (t==='KY' && promoted) ||
-              (t==='KE' && promoted) || (t==='GI' && promoted)){
-      addStep(0,dir);
-      addStep(-1,dir);
-      addStep(1,dir);
-      addStep(-1,0);
-      addStep(1,0);
-      addStep(0,-dir);
-    } else if(t==='OU' || t==='GY'){
-      addStep(0,1); addStep(0,-1); addStep(1,0); addStep(-1,0);
-      addStep(1,1); addStep(-1,1); addStep(1,-1); addStep(-1,-1);
-    } else if(t==='KA' && !promoted){
-      addSlide(1,1); addSlide(-1,1); addSlide(1,-1); addSlide(-1,-1);
-    } else if(t==='HI' && !promoted){
-      addSlide(1,0); addSlide(-1,0); addSlide(0,1); addSlide(0,-1);
-    } else if(t==='KA' && promoted){
-      addSlide(1,1); addSlide(-1,1); addSlide(1,-1); addSlide(-1,-1);
-      addStep(0,1); addStep(0,-1); addStep(1,0); addStep(-1,0);
-    } else if(t==='HI' && promoted){
-      addSlide(1,0); addSlide(-1,0); addSlide(0,1); addSlide(0,-1);
-      addStep(1,1); addStep(-1,1); addStep(1,-1); addStep(-1,-1);
-    }
-
-
-    return moves;
-  }
-
-
-  function getDropMoves(owner, type){
-    const moves = [];
-    for(let y=0;y<9;y++){
-      for(let x=0;x<9;x++){
-        if(board[y][x]) continue;
-        if(type==='FU'){
-          if(owner==='P' && y===0) continue;
-          if(owner==='E' && y===8) continue;
-        }
-        if(type==='KY'){
-          if(owner==='P' && y===0) continue;
-          if(owner==='E' && y===8) continue;
-        }
-        if(type==='KE'){
-          if(owner==='P' && y<=1) continue;
-          if(owner==='E' && y>=7) continue;
-        }
-        moves.push({to:{x,y}});
-      }
-    }
-    return moves;
-  }
-
-
-  function demoteType(type){
-    switch(type){
-      case 'FU': case 'TO': return 'FU';
-      case 'KY': case 'NY': return 'KY';
-      case 'KE': case 'NK': return 'KE';
-      case 'GI': case 'NG': return 'GI';
-      case 'KA': case 'UM': return 'KA';
-      case 'HI': case 'RY': return 'HI';
-      case 'KI': return 'KI';
-      case 'OU': return 'OU';
-      case 'GY': return 'GY';
-    }
-    return type;
-  }
-
-
-  function doMove(fromX,fromY,toX,toY,owner){
-    const piece = board[fromY][fromX];
-    const target = board[toY][toX];
-
-
-    if(target){
-      const baseType = demoteType(target.type);
-      if (owner === 'P') {
-        playerCaptured.push({owner:'P', type: baseType, promoted:false});
+  // 駒選択中 → 移動先をクリック
+  if (selected.from) {
+    const moves = highlights;
+    if (moves.some(m => m.r === r && m.c === c)) {
+      makeMove(selected.from.r, selected.from.c, r, c);
+      afterHumanMove();
+    } else {
+      // 別の自駒を選択し直し
+      if (piece && piece.color === currentTurn) {
+        selected = { from: { r, c }, piece };
+        highlights = legalMovesFrom(r, c, piece);
+        render();
       } else {
-        aiCaptured.push({owner:'E', type: baseType, promoted:false});
+        selected = null;
+        highlights = [];
+        render();
       }
-      if(target.type==='OU' || target.type==='GY'){
-        endGame(owner==='P' ? 'win' : 'lose');
+    }
+  }
+}
+
+function setMessage(text) {
+  msgEl.textContent = text;
+}
+
+// ----------------- ルール関連 -----------------
+
+function inBounds(r, c) {
+  return r >= 0 && r < SIZE && c >= 0 && c < SIZE;
+}
+
+function cloneBoardState() {
+  return {
+    board: board.map(row => row.map(p => p ? {...p} : null)),
+    hands: {
+      b: {...hands.b},
+      w: {...hands.w}
+    },
+    currentTurn
+  };
+}
+
+function restoreBoardState(state) {
+  board = state.board.map(row => row.map(p => p ? {...p} : null));
+  hands = {
+    b: {...state.hands.b},
+    w: {...state.hands.w}
+  };
+  currentTurn = state.currentTurn;
+}
+
+function switchTurn() {
+  currentTurn = currentTurn === 'b' ? 'w' : 'b';
+}
+
+function isPromotionZone(color, r) {
+  return color === 'b' ? (r <= 2) : (r >= 6);
+}
+
+function canPromote(piece) {
+  return ['P','L','N','S','B','R'].includes(piece.type);
+}
+
+// シンプルに「入る・出る・中にいる」なら自動成り（成れる駒のみ）
+function shouldAutoPromote(piece, fromR, toR) {
+  if (!canPromote(piece)) return false;
+  if (piece.color === 'b') {
+    return (fromR <= 2 || toR <= 2);
+  } else {
+    return (fromR >= 6 || toR >= 6);
+  }
+}
+
+// 合法手生成（1駒分）
+function legalMovesFrom(r, c, piece) {
+  const moves = [];
+  const dirs = [];
+  const forward = piece.color === 'b' ? -1 : 1;
+
+  const addMove = (nr, nc, sliding = false) => {
+    if (!inBounds(nr, nc)) return false;
+    const target = board[nr][nc];
+    if (target && target.color === piece.color) return false;
+    // 仮に動かして自玉が詰むかチェック
+    const state = cloneBoardState();
+    makeMove(r, c, nr, nc, true);
+    const inCheck = isInCheck(piece.color);
+    restoreBoardState(state);
+    if (!inCheck) {
+      moves.push({ r: nr, c: nc });
+    }
+    return !target; // sliding用：敵駒があればそこで止まる
+  };
+
+  const p = piece;
+  const pr = p.promoted;
+
+  if (p.type === 'P' && !pr) {
+    const nr = r + forward;
+    const nc = c;
+    if (inBounds(nr, nc) && !board[nr][nc]) {
+      addMove(nr, nc);
+    }
+  } else if (p.type === 'P' && pr || p.type === 'G' || (p.type === 'S' && pr) || (p.type === 'N' && pr) || (p.type === 'L' && pr)) {
+    // 金相当
+    const goldDirsB = [
+      [-1, 0], [-1, -1], [-1, 1],
+      [0, -1], [0, 1],
+      [1, 0]
+    ];
+    const goldDirsW = [
+      [1, 0], [1, -1], [1, 1],
+      [0, -1], [0, 1],
+      [-1, 0]
+    ];
+    const gdirs = p.color === 'b' ? goldDirsB : goldDirsW;
+    gdirs.forEach(d => addMove(r + d[0], c + d[1]));
+  } else if (p.type === 'S' && !pr) {
+    const sDirsB = [
+      [-1, 0], [-1, -1], [-1, 1],
+      [1, -1], [1, 1]
+    ];
+    const sDirsW = [
+      [1, 0], [1, -1], [1, 1],
+      [-1, -1], [-1, 1]
+    ];
+    const sdirs = p.color === 'b' ? sDirsB : sDirsW;
+    sdirs.forEach(d => addMove(r + d[0], c + d[1]));
+  } else if (p.type === 'N' && !pr) {
+    const nMovesB = [
+      [-2, -1], [-2, 1]
+    ];
+    const nMovesW = [
+      [2, -1], [2, 1]
+    ];
+    const nms = p.color === 'b' ? nMovesB : nMovesW;
+    nms.forEach(d => addMove(r + d[0], c + d[1]));
+  } else if (p.type === 'L' && !pr) {
+    let nr = r + forward;
+    let nc = c;
+    while (inBounds(nr, nc)) {
+      if (!addMove(nr, nc, true)) break;
+      nr += forward;
+    }
+  } else if (p.type === 'B') {
+    const bdirs = [[1,1],[1,-1],[-1,1],[-1,-1]];
+    bdirs.forEach(d => {
+      let nr = r + d[0];
+      let nc = c + d[1];
+      while (inBounds(nr, nc)) {
+        if (!addMove(nr, nc, true)) break;
+        nr += d[0];
+        nc += d[1];
+      }
+    });
+    if (pr) {
+      // 馬は王の動きも
+      [[1,0],[-1,0],[0,1],[0,-1]].forEach(d => addMove(r + d[0], c + d[1]));
+    }
+  } else if (p.type === 'R') {
+    const rdirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    rdirs.forEach(d => {
+      let nr = r + d[0];
+      let nc = c + d[1];
+      while (inBounds(nr, nc)) {
+        if (!addMove(nr, nc, true)) break;
+        nr += d[0];
+        nc += d[1];
+      }
+    });
+    if (pr) {
+      // 龍は斜め1マス
+      [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(d => addMove(r + d[0], c + d[1]));
+    }
+  } else if (p.type === 'K') {
+    const kdirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+    kdirs.forEach(d => addMove(r + d[0], c + d[1]));
+  }
+
+  return moves;
+}
+
+// 持ち駒打ちの合法マス
+function legalDrops(color, type) {
+  const moves = [];
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (board[r][c]) continue;
+      // 二歩チェック
+      if (type === 'P') {
+        if (!pawnDropAllowed(color, c)) continue;
+        // 打ち歩詰めは簡略化して未対応
+      }
+      // 桂・香・歩は打てない段もある
+      if (type === 'P' || type === 'L') {
+        if ((color === 'b' && r === 0) || (color === 'w' && r === 8)) continue;
+      }
+      if (type === 'N') {
+        if ((color === 'b' && r <= 1) || (color === 'w' && r >= 7)) continue;
+      }
+
+      // 自玉が詰まないかチェック
+      const state = cloneBoardState();
+      makeDropMove(color, type, r, c, true);
+      const inCheck = isInCheck(color);
+      restoreBoardState(state);
+      if (!inCheck) {
+        moves.push({ r, c });
       }
     }
-
-
-    board[toY][toX] = piece;
-    board[fromY][fromX] = null;
-
-
-    promoteIfNeeded(piece, fromY, toY);
-
-
-    const moveName = describeMove(piece, fromX, fromY, toX, toY, !!target);
-    showMoveBanner("あなた: " + moveName);
   }
+  return moves;
+}
 
-
-  function doDropMove(owner, type, x,y, index){
-    if(owner==='P'){
-      const p = playerCaptured.splice(index,1)[0];
-      board[y][x] = {owner:'P', type:p.type, promoted:false};
-      showMoveBanner("あなた: " + describeDrop(p.type, x,y));
-    } else {
-      const p = aiCaptured.splice(index,1)[0];
-      board[y][x] = {owner:'E', type:p.type, promoted:false};
-      showMoveBanner("相手: " + describeDrop(p.type, x,y));
+function pawnDropAllowed(color, file) {
+  for (let r = 0; r < SIZE; r++) {
+    const p = board[r][file];
+    if (p && p.color === color && p.type === 'P' && !p.promoted) {
+      return false; // 二歩
     }
   }
+  return true;
+}
 
-
-  function describeMove(piece, fx,fy,tx,ty,capture){
-    const names = {
-      FU:"歩", KY:"香", KE:"桂", GI:"銀", KI:"金",
-      OU:"玉", GY:"王", KA:"角", HI:"飛"
-    };
-    const base = names[piece.type] || getPieceChar(piece);
-    const dir = piece.owner==='P' ? -1 : 1;
-    let kind = "";
-    if(ty === fy + dir && tx === fx) kind = "前進";
-    else if(ty === fy && Math.abs(tx-fx)>0) kind = "横移動";
-    else if(Math.abs(tx-fx)===Math.abs(ty-fy)) kind = "斜め";
-    else kind = "移動";
-    let text = base + "の" + kind;
-    if(capture) text += "（取り）";
-    if(piece.promoted && canPromote(piece.type)) text += " 成り";
-    return text;
+// 実際の移動（simulate=trueならターン切り替え・メッセージなし）
+function makeMove(fr, fc, tr, tc, simulate = false) {
+  const piece = board[fr][fc];
+  const target = board[tr][tc];
+  if (target) {
+    // 持ち駒へ
+    const tType = target.type;
+    const baseType = tType; // 成りは元に戻す
+    const unpromotedType = baseType;
+    const owner = piece.color;
+    hands[owner][unpromotedType] = (hands[owner][unpromotedType] || 0) + 1;
   }
-
-
-  function describeDrop(type,x,y){
-    const names = {
-      FU:"歩", KY:"香", KE:"桂", GI:"銀", KI:"金",
-      OU:"玉", GY:"王", KA:"角", HI:"飛"
-    };
-    return (names[type] || PIECE_CHARS[type] || "?") + "打ち";
+  board[fr][fc] = null;
+  const moved = {...piece};
+  if (shouldAutoPromote(moved, fr, tr)) {
+    moved.promoted = true;
   }
-
-
-  function showMoveBanner(text){
-    moveBanner.textContent = text;
-    moveBanner.classList.add('show');
-    if(bannerTimer) clearTimeout(bannerTimer);
-    bannerTimer = setTimeout(()=>{
-      moveBanner.classList.remove('show');
-    }, 2200);
+  board[tr][tc] = moved;
+  if (!simulate) {
+    selected = null;
+    highlights = [];
+    switchTurn();
+    render();
   }
+}
 
+function makeDropMove(color, type, r, c, simulate = false) {
+  // 持ち駒減らす
+  hands[color][type] = (hands[color][type] || 0) - 1;
+  if (hands[color][type] <= 0) delete hands[color][type];
+  const piece = makePiece(type, color, false);
+  board[r][c] = piece;
+  if (!simulate) {
+    selected = null;
+    highlights = [];
+    switchTurn();
+    render();
+  }
+}
 
-  function endGame(result){
-    gameOver = true;
-    resultOverlay.classList.add('show');
-    if(result==='win'){
-      resultTitle.textContent = "勝利！";
-      resultTitle.classList.remove('lose');
-      resultTitle.classList.add('win');
-      resultText.textContent = "相手の王を捕らえました。";
-    } else {
-      resultTitle.textContent = "敗北…";
-      resultTitle.classList.remove('win');
-      resultTitle.classList.add('lose');
-      resultText.textContent = "玉が捕らえられました。";
+function findKing(color) {
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const p = board[r][c];
+      if (p && p.color === color && p.type === 'K') {
+        return { r, c };
+      }
     }
   }
+  return null;
+}
 
-
-  restartBtn.addEventListener('click', ()=>{
-    resultOverlay.classList.remove('show');
-    initBoard();
-  });
-
-
-  // --- AI ---
-  function aiTurn(){
-    if(gameOver) return;
-    currentPlayer = 'E';
-    updateUI();
-
-
-    const diff = parseInt(difficultyEl.value,10);
-
-
-    const moves = [];
-    // 通常の手
-    for(let y=0;y<9;y++){
-      for(let x=0;x<9;x++){
-        const p = board[y][x];
-        if(p && p.owner==='E'){
-          const list = getLegalMovesForPiece(x,y,'E');
-          list.forEach(m=>{
-            moves.push({
-              type:'move',
-              fromX:x, fromY:y,
-              toX:m.to.x, toY:m.to.y
-            });
-          });
+function isInCheck(color) {
+  const kingPos = findKing(color);
+  if (!kingPos) return true;
+  const enemy = color === 'b' ? 'w' : 'b';
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const p = board[r][c];
+      if (p && p.color === enemy) {
+        const moves = legalMovesFrom(r, c, p);
+        if (moves.some(m => m.r === kingPos.r && m.c === kingPos.c)) {
+          return true;
         }
       }
     }
-    // 打つ手
-    aiCaptured.forEach((p,idx)=>{
-      const drops = getDropMoves('E', p.type);
-      drops.forEach(d=>{
-        moves.push({
-          type:'drop',
-          dropIndex:idx,
-          pieceType:p.type,
-          toX:d.to.x, toY:d.to.y
+  }
+  return false;
+}
+
+function allLegalMoves(color) {
+  const moves = [];
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const p = board[r][c];
+      if (p && p.color === color) {
+        const ms = legalMovesFrom(r, c, p);
+        ms.forEach(m => {
+          moves.push({ type: 'move', fr: r, fc: c, tr: m.r, tc: m.c });
         });
-      });
+      }
+    }
+  }
+  // 打ち駒
+  const types = Object.keys(hands[color]);
+  types.forEach(t => {
+    const ds = legalDrops(color, t);
+    ds.forEach(m => {
+      moves.push({ type: 'drop', color, pieceType: t, r: m.r, c: m.c });
     });
+  });
+  return moves;
+}
 
+function isGameOver() {
+  // 手番側に合法手がなければ負け
+  const moves = allLegalMoves(currentTurn);
+  if (moves.length === 0) {
+    gameOver = true;
+    const winner = currentTurn === 'b' ? '後手（AI）' : '先手（あなた）';
+    setMessage('詰みです。勝者: ' + winner);
+    return true;
+  }
+  return false;
+}
 
-    if(moves.length===0){
-      endGame('win');
-      return;
+// ----------------- AI -----------------
+
+function afterHumanMove() {
+  if (isGameOver()) {
+    render();
+    return;
+  }
+  render();
+  setTimeout(() => {
+    aiMove();
+  }, 300);
+}
+
+function aiMove() {
+  if (gameOver) return;
+  if (currentTurn !== 'w') return;
+
+  const difficulty = parseInt(diffSlider.value, 10);
+  const depth = difficultyToDepth(difficulty);
+  const moves = allLegalMoves('w');
+  if (moves.length === 0) {
+    isGameOver();
+    render();
+    return;
+  }
+
+  let bestScore = -Infinity;
+  let bestMove = moves[0];
+
+  for (const mv of moves) {
+    const state = cloneBoardState();
+    if (mv.type === 'move') {
+      makeMove(mv.fr, mv.fc, mv.tr, mv.tc, true);
+    } else {
+      makeDropMove('w', mv.pieceType, mv.r, mv.c, true);
     }
-
-
-    let best = null;
-    moves.forEach(m=>{
-      let score = Math.random();
-      const toPiece = board[m.toY]?.[m.toX] || null;
-      const fromPiece = (m.type==='move') ? board[m.fromY][m.fromX] : {owner:'E', type:m.pieceType, promoted:false};
-
-
-      if(diff>=2 && toPiece && toPiece.owner==='P'){
-        score += 5;
-      }
-      if(diff>=3){
-        score += (m.toY - (m.type==='move' ? m.fromY : 0)) * 0.2;
-        if(canPromote(fromPiece.type) && isPromotionZone('E', m.toY)){
-          score += 4;
-        }
-      }
-      if(diff>=4){
-        const kingPos = findKing('P');
-        if(kingPos){
-          const dist = Math.abs(kingPos.x - m.toX) + Math.abs(kingPos.y - m.toY);
-          score += (10 - dist) * 0.3;
-        }
-      }
-      if(diff>=5){
-        const kingPos = findKing('P');
-        if(kingPos && kingPos.x===m.toX && kingPos.y===m.toY){
-          score += 20;
-        }
-      }
-      // --- 難易度6：危険マスを避ける（相手の利きに入らない） ---
-if (diff >= 6) {
-  const enemyMoves = [];
-  // 相手の全ての利きを収集
-  for (let yy = 0; yy < 9; yy++) {
-    for (let xx = 0; xx < 9; xx++) {
-      const p = board[yy][xx];
-      if (p && p.owner === 'P') {
-        enemyMoves.push(...getLegalMovesForPiece(xx, yy, 'P').map(mv => mv.to));
-      }
-    }
-  }
-  // 移動先が危険なら減点
-  if (enemyMoves.some(t => t.x === m.toX && t.y === m.toY)) {
-    score -= 3;
-  }
-}
-
-
-// --- 難易度7：悪い交換を避ける（価値判断） ---
-if (diff >= 7) {
-  const pieceValue = { FU:1, KY:3, KE:4, GI:5, KI:6, KA:8, HI:9, OU:100, GY:100 };
-  const fromPiece = (m.type==='move') ? board[m.fromY][m.fromX] : {type:m.pieceType};
-  const target = board[m.toY]?.[m.toX];
-
-
-  if (target && target.owner === 'P') {
-    const gain = pieceValue[target.type] || 0;
-    const loss = pieceValue[fromPiece.type] || 0;
-
-
-    // 悪い交換は避ける
-    if (loss > gain) score -= (loss - gain) * 1.5;
-    // 良い交換は高評価
-    if (gain > loss) score += (gain - loss) * 1.5;
-  }
-}
-
-
-// --- 難易度8：王手を強く意識 ---
-if (diff >= 8) {
-  const kingPos = findKing('P');
-  if (kingPos && kingPos.x === m.toX && kingPos.y === m.toY) {
-    score += 15; // 王手
-  }
-}
-
-
-// --- 難易度9：詰め筋を意識（王の周りに利きを増やす） ---
-if (diff >= 9) {
-  const kingPos = findKing('P');
-  if (kingPos) {
-    const dist = Math.abs(kingPos.x - m.toX) + Math.abs(kingPos.y - m.toY);
-    score += (10 - dist) * 0.4; // 王に近づくほど高評価
-  }
-}
-
-
-// --- 難易度10：総合評価（攻め・守り・危険回避・交換） ---
-if (diff >= 10) {
-  // 王の安全
-  const myKing = findKing('E');
-  if (myKing) {
-    const distBefore = Math.abs(myKing.x - (m.type==='move'?m.fromX:myKing.x)) +
-                       Math.abs(myKing.y - (m.type==='move'?m.fromY:myKing.y));
-    const distAfter  = Math.abs(myKing.x - m.toX) +
-                       Math.abs(myKing.y - m.toY);
-    if (distAfter > distBefore) score += 2;
-  }
-
-
-  // 相手の攻め駒を消す
-  const target = board[m.toY]?.[m.toX];
-  if (target && target.owner === 'P' && ['HI','KA','GI','KE'].includes(target.type)) {
-    score += 8;
-  }
-
-
-  // 危険マス回避（強化版）
-  const enemyMoves = [];
-  for (let yy = 0; yy < 9; yy++) {
-    for (let xx = 0; xx < 9; xx++) {
-      const p = board[yy][xx];
-      if (p && p.owner === 'P') {
-        enemyMoves.push(...getLegalMovesForPiece(xx, yy, 'P').map(mv => mv.to));
-      }
+    switchTurn();
+    const score = -negamax('b', depth - 1, -Infinity, Infinity);
+    restoreBoardState(state);
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = mv;
     }
   }
-  if (enemyMoves.some(t => t.x === m.toX && t.y === m.toY)) {
-    score -= 5;
+
+  if (bestMove.type === 'move') {
+    makeMove(bestMove.fr, bestMove.fc, bestMove.tr, bestMove.tc);
+  } else {
+    makeDropMove('w', bestMove.pieceType, bestMove.r, bestMove.c);
+  }
+
+  if (!isGameOver()) {
+    render();
+    setMessage('あなたの手番です。');
+  } else {
+    render();
   }
 }
 
+function difficultyToDepth(d) {
+  // 1～10 を 1～4手読みくらいにマッピング（差を大きめに）
+  if (d <= 2) return 1;
+  if (d <= 4) return 2;
+  if (d <= 7) return 3;
+  return 4;
+}
 
+function negamax(color, depth, alpha, beta) {
+  if (depth === 0 || gameOverPosition()) {
+    return evaluate(color);
+  }
+  const moves = allLegalMoves(color);
+  if (moves.length === 0) {
+    // 詰み：負け
+    return -100000;
+  }
+  let best = -Infinity;
+  for (const mv of moves) {
+    const state = cloneBoardState();
+    if (mv.type === 'move') {
+      makeMove(mv.fr, mv.fc, mv.tr, mv.tc, true);
+    } else {
+      makeDropMove(color, mv.pieceType, mv.r, mv.c, true);
+    }
+    switchTurn();
+    const score = -negamax(color === 'b' ? 'w' : 'b', depth - 1, -beta, -alpha);
+    restoreBoardState(state);
+    if (score > best) best = score;
+    if (best > alpha) alpha = best;
+    if (alpha >= beta) break;
+  }
+  return best;
+}
 
+function gameOverPosition() {
+  // 王がいないなど
+  const bk = findKing('b');
+  const wk = findKing('w');
+  return !bk || !wk;
+}
 
-      if(!best || score>best.score){
-        best = {...m, score};
+function evaluate(perspective) {
+  // シンプル評価：駒の価値合計
+  const values = {
+    P: 100,
+    L: 300,
+    N: 300,
+    S: 400,
+    G: 500,
+    B: 800,
+    R: 900,
+    K: 10000
+  };
+  let score = 0;
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const p = board[r][c];
+      if (!p) continue;
+      let v = values[p.type] || 0;
+      if (p.promoted && p.type !== 'K' && p.type !== 'G') {
+        v += 200;
       }
+      score += (p.color === perspective ? v : -v);
+    }
+  }
+  // 持ち駒
+  ['b','w'].forEach(color => {
+    const sign = color === perspective ? 1 : -1;
+    Object.entries(hands[color]).forEach(([t, cnt]) => {
+      let v = values[t] || 0;
+      score += sign * v * cnt;
     });
+  });
+  return score;
+}
 
-
-    if(!best){
-      endGame('win');
-      return;
-    }
-
-
-    if(best.type==='move'){
-      const piece = board[best.fromY][best.fromX];
-      const target = board[best.toY][best.toX];
-      if(target){
-        const baseType = demoteType(target.type);
-        aiCaptured.push({owner:'E', type: baseType, promoted:false});
-        if(target.type==='OU'){
-          endGame('lose');
-        }
-      }
-      board[best.toY][best.toX] = piece;
-      board[best.fromY][best.fromX] = null;
-      promoteIfNeeded(piece, best.fromY, best.toY);
-      const moveName = describeMove(piece, best.fromX, best.fromY, best.toX, best.toY, !!target);
-      showMoveBanner("相手: " + moveName);
-    } else {
-      doDropMove('E', best.pieceType, best.toX, best.toY, best.dropIndex);
-    }
-
-
-    if(!gameOver){
-      currentPlayer = 'P';
-      updateUI();
-    } else {
-      updateUI();
-    }
-  }
-
-
-  function findKing(owner){
-    for(let y=0;y<9;y++){
-      for(let x=0;x<9;x++){
-        const p = board[y][x];
-        if(!p) continue;
-        if(owner==='P' && p.type==='OU') return {x,y};
-        if(owner==='E' && p.type==='GY') return {x,y};
-      }
-    }
-    return null;
-  }
-
-
-  initBoard();
+// ----------------- 起動 -----------------
+initBoard();
 </script>
 </body>
 </html>
